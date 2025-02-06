@@ -7,7 +7,7 @@ on:
 
 env:
   # Docker Hub username/image name.  IMPORTANT: Change this!
-  IMAGE_NAME: your_dockerhub_username/communication-software
+  IMAGE_NAME: inspirers/communication-software
 
 jobs:
   build-and-push:
