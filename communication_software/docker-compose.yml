@@ -8,5 +8,5 @@ services:
     build: 
       context: .
       dockerfile: ./Dockerfile
-    # command: bash -it
-    command: bash -c "source /home/app/az-drone-safety-platform/install/local_setup.bash ; ros2 run communication_software run_main" # ros2 run communication_software run_main
+    command: bash -c "source /root/atos_ws/src/communication_software/install/local_setup.bash ; ros2 run communication_software run_main" # ros2 run communication_software run_main
+    # command: bash -c "source /home/app/az-drone-safety-platform/install/local_setup.bash ; ros2 run communication_software run_main" # ros2 run communication_software run_main

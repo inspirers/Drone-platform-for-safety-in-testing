@@ -1,30 +1,58 @@
 ARG ROS_DISTRO=humble
 ARG OS=jammy
-ARG FROM_IMAGE=astazero/atos_docker_env:latest  # Ensure this image exists
+ARG FROM_IMAGE=astazero/atos_docker_env:latest
 
 FROM ${FROM_IMAGE} AS application
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# Define application directory as an environment variable
-ENV APP_DIR=/home/app/az-drone-safety-platform
+# --- Workspace Setup ---
+ENV WORKSPACE_DIR=/root/atos_ws
+RUN mkdir -p ${WORKSPACE_DIR}/src
 
-# Set up workspace
-WORKDIR /root/atos_ws/src
+# Copy the entire project into the workspace's src directory as the 'communication_software' package
+COPY . ${WORKSPACE_DIR}/src/communication_software
 
-# Copy the new application into the container
-COPY . ${APP_DIR}
+# --- Build ---
+WORKDIR ${WORKSPACE_DIR}
 
-# Ensure the directory exists before creating the symbolic link
-RUN ln -s ${APP_DIR} /root/atos_ws/src/communication_software
-
-# Build the application
-WORKDIR /home/app/az-drone-safety-platform
+# Build the ROS 2 package.  Source ROS *and then* build within the SAME RUN instruction.
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    source /root/atos_ws/install/setup.sh && \
-    colcon build # && \
-    source ${APP_DIR}/install/local_setup.bash
+    colcon build --symlink-install
+
+# Source the workspace's setup file in .bashrc for later interactive shells
+RUN echo "source ${WORKSPACE_DIR}/install/local_setup.bash" >> ~/.bashrc
+
+CMD ["/bin/bash"]
+
+# ARG ROS_DISTRO=humble
+# ARG OS=jammy
+# ARG FROM_IMAGE=astazero/atos_docker_env:latest  # Ensure this image exists
+
+# FROM ${FROM_IMAGE} AS application
+
+# ENV DEBIAN_FRONTEND=noninteractive
+# SHELL ["/bin/bash", "-c"]
+
+# # Define application directory as an environment variable
+# ENV APP_DIR=/home/app/az-drone-safety-platform
+
+# # Set up workspace
+# WORKDIR /root/atos_ws/src
+
+# # Copy the new application into the container
+# COPY . ${APP_DIR}
+
+# # Ensure the directory exists before creating the symbolic link
+# RUN ln -s ${APP_DIR} /root/atos_ws/src/communication_software
+
+# # Build the application
+# WORKDIR /home/app/az-drone-safety-platform
+# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
+#     source /root/atos_ws/install/setup.sh && \
+#     colcon build # && \
+#     source ${APP_DIR}/install/local_setup.bash
 
 
 
