@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository | lower | replace('-', '_') }}/communication-software
+  IMAGE_NAME: drone_platform_for_safety_in_testing/communication-software 
 
 jobs:
   build-and-push:
