@@ -1,12 +1,11 @@
 services:
   comm_software:
     container_name: comm_software
-    ipc: host
-    privileged: true
+    # ipc: host
+    # privileged: true
     stdin_open: true
     tty: true
     build: 
       context: .
       dockerfile: ./Dockerfile
-    command: bash -c "source /root/atos_ws/src/communication_software/install/local_setup.bash ; ros2 run communication_software run_main" # ros2 run communication_software run_main
-    # command: bash -c "source /home/app/az-drone-safety-platform/install/local_setup.bash ; ros2 run communication_software run_main" # ros2 run communication_software run_main
+    command: bash -c "source /root/atos_ws/install/local_setup.bash ; ros2 run communication_software run_main"
