@@ -1,0 +1,7 @@
+services:
+  comm_software:
+    container_name: comm_software
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    command: ros2 run communication_software run_main
