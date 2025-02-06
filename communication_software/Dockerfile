@@ -17,16 +17,19 @@ WORKDIR /root/atos_ws/src
 COPY . ${APP_DIR}
 
 # Ensure the directory exists before creating the symbolic link
-RUN mkdir -p ${APP_DIR}/communication_software && \
-    ln -s ${APP_DIR}/communication_software /root/atos_ws/src/communication_software
+RUN ln -s ${APP_DIR} /root/atos_ws/src/communication_software
 
 # Build the application
-WORKDIR /root/atos_ws
+WORKDIR /home/app/az-drone-safety-platform
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build
+    source /root/atos_ws/install/setup.sh && \
+    colcon build # && \
+    source ${APP_DIR}/install/local_setup.bash
+
+
 
 # Source the built environment
-RUN echo "source /root/atos_ws/install/local_setup.bash" >> ~/.bashrc
+# RUN echo "source /root/atos_ws/install/local_setup.bash" >> ~/.bashrc
 
 # Default command: open a bash shell
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]
