@@ -8,4 +8,5 @@ services:
     build: 
       context: .
       dockerfile: ./Dockerfile
+    image:
     command: bash -c "source /root/atos_ws/install/local_setup.bash ; ros2 run communication_software run_main"

@@ -32,5 +32,4 @@ jobs:
           context: ./communication_software 
           push: true
           tags: |
-            # ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
