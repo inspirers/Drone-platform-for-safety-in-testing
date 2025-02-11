@@ -11,17 +11,17 @@ import rclpy
 def main() -> None:
 
     Interface.print_welcome()
-    rclpy.init()
+    # rclpy.init()
 
     while True:
         #if this method returns true it means that the user wants to proceed
         if Interface.print_menu():
             ip = Interface.get_ip()
 
+            print("Trying to initialize rclpy")
             rclpy.init()
             #Try to get the coordinates from the ROS2 service
             ATOScommunicator = AtosCommunication()
-
             ATOScommunicator.publish_init()
             time.sleep(5)
 
