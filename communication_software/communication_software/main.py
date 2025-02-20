@@ -11,7 +11,8 @@ import rclpy
 def main() -> None:
 
     Interface.print_welcome()
-    rclpy.init()
+    if not rclpy.ok():
+        rclpy.init()
 
     while True:
         #if this method returns true it means that the user wants to proceed

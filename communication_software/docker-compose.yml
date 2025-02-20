@@ -12,7 +12,9 @@ services:
     networks:
       - atos-net
     ports:
-      - 8765
+      - 8765:8765
+      - 14501:14501
+      - 14500:14500
   atos:
     image: astazero/atos_docker_env:latest
     networks:
