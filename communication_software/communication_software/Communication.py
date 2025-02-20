@@ -22,7 +22,7 @@ class Communication():
         self.lng = str(coordinates.lng)[0:9]
         self.alt = str(coordinates.alt)[0:2]
         self.angle = str(angle)
-
+        print("Initialising websocket on ip: ", ip)
         server = await websockets.serve(self.webs_server, ip, 14500)
         print("WebSocket server started.")
         await server.wait_closed()
