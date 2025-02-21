@@ -2,7 +2,7 @@ import communication_software.CoordinateHandler as CoordinateHandler
 from communication_software.Communication import Communication
 import asyncio
 import time
-
+                                    
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 
@@ -11,17 +11,18 @@ import rclpy
 def main() -> None:
 
     Interface.print_welcome()
-    rclpy.init()
+    if not rclpy.ok():
+        rclpy.init()
 
     while True:
         #if this method returns true it means that the user wants to proceed
         if Interface.print_menu():
             ip = Interface.get_ip()
 
-            rclpy.init()
+            print("Trying to initialize rclpy")
+            # rclpy.init()
             #Try to get the coordinates from the ROS2 service
             ATOScommunicator = AtosCommunication()
-
             ATOScommunicator.publish_init()
             time.sleep(5)
 

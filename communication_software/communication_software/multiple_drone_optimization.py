@@ -489,4 +489,3 @@ def getDronesLoc(coordslist, droneOrigin):
 
 
 
-
