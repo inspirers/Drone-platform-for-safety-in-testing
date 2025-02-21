@@ -225,8 +225,34 @@ def getDronesLoc(coordslist, droneOrigin):
     flyTo1 = Coordinate(lat1,long1,height)
     flyTo2 = Coordinate(lat2,long2, height)
 
-    # BUILD ANGLE CALCULATION
+   # BUILD ANGLE CALCULATION
 
-    angle = 10
+    # Calculate angle for drone 1
+    x_travel1 = max_x[0] - min_x[0]
+    y_travel1 = max_y[1] - min_y[1]
+    if x_travel1 >= y_travel1:
+        deltaY1 = np.abs(max_x[1] - min_x[1])
+        angle1 = np.arctan2(deltaY1, x_travel1)
+        angle1 = (angle1 - np.pi/2) * (180/np.pi)
+    else:
+        deltaX1 = np.abs(max_y[0] - min_y[0])
+        angle1 = np.arctan2(deltaX1, y_travel1)
+        angle1 = (angle1) * (180/np.pi)
+    angle1 = round(angle1)
 
-    return flyTo1, flyTo2, angle
+    # Calculate angle for drone 2
+    x_travel2 = max_x[0] - min_x[0]
+    y_travel2 = max_y[1] - min_y[1]
+    if x_travel2 >= y_travel2:
+        deltaY2 = np.abs(max_x[1] - min_x[1])
+        angle2 = np.arctan2(deltaY2, x_travel2)
+        angle2 = (angle2 - np.pi/2) * (180/np.pi)
+    else:
+        deltaX2 = np.abs(max_y[0] - min_y[0])
+        angle2 = np.arctan2(deltaX2, y_travel2)
+        angle2 = (angle2) * (180/np.pi)
+    angle2 = round(angle2)
+    
+    
+
+    return flyTo1, flyTo2, angle1, angle2
