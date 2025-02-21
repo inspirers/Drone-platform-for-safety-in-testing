@@ -6,17 +6,15 @@ services:
     build: 
       context: .
       dockerfile: ./Dockerfile
-    # image: inspirers/communication-software:latest
     command: bash -c "source /root/atos_ws/install/local_setup.bash ; ros2 run communication_software run_main"
-    # network_mode: "host"
     networks:
       - atos-net
     ports:
-      - 8765:8765
-      - 14501:14501
+      - 8765:14500
       - 14500:14500
   atos:
     image: astazero/atos_docker_env:latest
+    container_name: atos
     networks:
       - atos-net
     ports:
@@ -31,11 +29,11 @@ services:
       - "9090:9090" 
     volumes: 
       - ~/.astazero/ATOS/:/root/.astazero/ATOS/
-    # command: bash -c "source /root/atos_ws/install/setup.sh ; python3 -m pytest /root/atos_ws/src/atos/scripts/integration_testing/run_scenario_test.py"
     command: bash -c "source /root/atos_ws/install/setup.sh ; ros2 launch atos launch_basic.py insecure:=True"
 
   isoObject:
     image: astazero/iso_object_demo:latest
+    container_name: isoObject
     networks:
       - atos-net
 networks:
