@@ -6,7 +6,7 @@ services:
     build: 
       context: .
       dockerfile: ./Dockerfile
-    image: inspirers/communication-software:latest
+    # image: inspirers/communication-software:latest
     command: bash -c "source /root/atos_ws/install/local_setup.bash ; ros2 run communication_software run_main"
     # network_mode: "host"
     networks:
