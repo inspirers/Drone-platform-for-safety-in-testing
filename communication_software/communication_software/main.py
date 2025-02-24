@@ -42,6 +42,9 @@ def main() -> None:
                 print("Coordinates could not be found")
                 continue
             #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
+
+            
+
             communication = Communication()
             try:
                 print("Server starting, press ctrl + c to exit")
