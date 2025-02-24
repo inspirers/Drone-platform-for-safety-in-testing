@@ -3,7 +3,7 @@ from communication_software.Communication import Communication
 import asyncio
 import time
 import threading
-from frontendWebsocket import run_server
+from communication_software.frontendWebsocket import run_server
                                     
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
