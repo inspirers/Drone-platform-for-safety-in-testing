@@ -62,7 +62,7 @@ class AtosCommunication(Node):
         while not self.get_object_control_state_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn('ATOS is not running, waiting ...')
         self.get_logger().info('ATOS is running, waiting 10s to make sure that everything has started')
-        time.sleep(10)
+        # time.sleep(10)
 
     def __del__(self):
         """This does some cleanup when the instance is deleted

@@ -2,6 +2,8 @@ import communication_software.CoordinateHandler as CoordinateHandler
 from communication_software.Communication import Communication
 import asyncio
 import time
+import threading
+from communication_software.frontendWebsocket import run_server
                                     
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
@@ -42,6 +44,9 @@ def main() -> None:
                 print("Coordinates could not be found")
                 continue
             #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
+
+            start_server()
+
             communication = Communication()
             try:
                 print("Server starting, press ctrl + c to exit")
@@ -63,3 +68,9 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def start_server():
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    print("FastAPI server started in a separate thread!")

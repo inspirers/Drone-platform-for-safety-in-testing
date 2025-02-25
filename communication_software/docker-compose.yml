@@ -12,6 +12,7 @@ services:
     ports:
       - 8765:14500
       - 14500:14500
+      - 8000:8000
   atos:
     image: astazero/atos_docker_env:latest
     container_name: atos
