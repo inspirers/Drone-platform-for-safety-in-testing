@@ -202,7 +202,7 @@ def getDronesLoc(coordslist, droneOrigin):
 
     drone_loc_x1, drone_loc_y1, drone_loc_x2, drone_loc_y2 = find_drone_point_2_4(x_origin, y_origin, drone_distance/2)
 
-    # DEFINE DEFINE DRONE POSITIONS IN LATITUDE AND LONGITUDE
+    # DEFINE DRONE POSITIONS IN LATITUDE AND LONGITUDE
     
     # Earth radius in meters
     earth_radius = 6371000

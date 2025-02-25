@@ -6,8 +6,8 @@ import coordinateMapping
 from annotator import Annotator
 
 #stream_url = 'http://192.168.50.123:8080/screen_stream.mjpeg'
-stream_url = 'chalmers2.mp4'
-model_filename = 'best.pt'
+stream_url = '/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/Chalmers6.m4v'
+model_filename = '/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/best.pt'
 window_size = (1200, 650)
 
 # set to crop frames
