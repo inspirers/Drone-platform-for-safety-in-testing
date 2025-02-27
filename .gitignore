@@ -208,3 +208,4 @@ google-services.json
 *.hprof
 
 .astazero
+.venv
