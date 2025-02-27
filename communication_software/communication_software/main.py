@@ -4,7 +4,7 @@ import asyncio
 import time
 import threading
 from communication_software.frontendWebsocket import run_server
-from communication_software.multiple_drone_optimization import getDronesLoc, calculate_Height_Distance
+from communication_software.multiple_drone_optimization import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 
@@ -34,8 +34,6 @@ def main() -> None:
             trajectoryList = {}
             for id in ids:
                 coordlist = ATOScommunicator.get_object_traj(id)
-                for coord in coordlist:
-                    print(coord)
                 trajectoryList[id] = coordlist
 
             droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList,origo)
@@ -47,10 +45,7 @@ def main() -> None:
             #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
 
             flyTo1, flyTo2, angle1, angle2 = getDronesLoc(trajectoryList,droneOrigin)
-            print("FlyTo1:",flyTo1)
-            print("FlyTo2:",flyTo2)
-            print("angle1:",angle1)
-            print("angle2:",angle2)
+            print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}")
 
             start_server()
 
