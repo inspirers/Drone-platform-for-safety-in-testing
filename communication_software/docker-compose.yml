@@ -52,8 +52,8 @@ services:
       - DRONE_WS_URL=ws://localhost:8000/api/v1/ws/drone
       - ATOS_WS_URL=ws://localhost:8000/api/v1/ws/atos
     build: 
-      context: .
-      dockerfile: ./Dockerfile-frontend
+      context: ../frontend
+      dockerfile: ../frontend/Dockerfile
     networks:
       - atos-net
     ports:
