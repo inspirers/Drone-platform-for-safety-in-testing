@@ -92,5 +92,10 @@ async def drone2_feed():
 def health_check():
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
-if __name__ == "__main__":
-    uvicorn.run("frontendWebsocket:app", host="0.0.0.0", port=8000, reload=True)
+def run_server():
+    uvicorn.run(
+        "communication_software.frontendWebsocket:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=False,
+    )

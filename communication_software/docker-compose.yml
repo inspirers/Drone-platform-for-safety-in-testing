@@ -45,6 +45,20 @@ services:
         reservations:
           cpus: "0.05"
           memory: 128M
+  frontend:
+    image: nginx:latest
+    container_name: frontend
+    environment:
+      - DRONE_WS_URL="ws://comm_software:8000/api/v1/ws/drone"
+      - ATOS_WS_URL="ws://comm_software:8000/api/v1/ws/atos"
+    build: 
+      context: .
+      dockerfile: ./Dockerfile-frontend
+    networks:
+      - atos-net
+    ports:
+      - 8001:80
+
 networks:
   atos-net:
     driver: bridge
