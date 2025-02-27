@@ -7,6 +7,8 @@ class Coordinate():
         self.lat = lat
         self.lng = lng
         self.alt = alt
+    def __str__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
 
 def addHeight(coordinate:Coordinate) -> Coordinate:
     height = calculateHeight()
