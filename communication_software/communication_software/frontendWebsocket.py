@@ -1,62 +1,96 @@
 import asyncio
 import random
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 import uvicorn
-from typing import List
+import cv2
+import numpy as np
+from datetime import datetime
+import os
 
 app = FastAPI()
 
-
-class ConnectionManager:
+# ATOS Simulation
+class ATOSController:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.test_active = False
+        self.anomalies = False
+        self.drone_data = {
+            1: {'lat': 57.705841, 'lng': 11.938096, 'alt': 150, 'speed': 0.0, 'battery': 100.0},
+            2: {'lat': 57.705941, 'lng': 11.939096, 'alt': 150, 'speed': 0.0, 'battery': 100.0}
+        }
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+atos = ATOSController()
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+# Video Generation
+async def generate_drone_frames(drone_id):
+    while True:
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(frame, f"Drone {drone_id}", (50, 50), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        _, buffer = cv2.imencode('.jpg', frame)
+        yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
-
-
-manager = ConnectionManager()
-
-
+# WebSocket Endpoints
 @app.websocket("/api/v1/ws/drone")
-async def websocket_endpoint(websocket: WebSocket):
+async def drone_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            
-            drone_data = {
-                "latitude": round(random.uniform(40.0, 50.0), 6),
-                "longitude": round(random.uniform(-80.0, -70.0), 6),
-                "altitude": round(random.uniform(100, 500), 2)
-            }
-            
-            await websocket.send_json(drone_data)
-            print(f"Sent: {drone_data}")
-
-            await asyncio.sleep(1)  # Wait 1 second before sending again
-    # await manager.connect(websocket)
-    # try:
-    #     while True:
-    #         data = await websocket.receive_text()
-    #         print(f"Received data: {data}")
-    #         await manager.broadcast(data)
+            for drone_id in [1, 2]:
+                # Update drone metrics
+                atos.drone_data[drone_id].update({
+                    'lat': atos.drone_data[drone_id]['lat'] + random.uniform(-0.0001, 0.0001),
+                    'lng': atos.drone_data[drone_id]['lng'] + random.uniform(-0.0001, 0.0001),
+                    'alt': 150 + random.randint(-5, 5),
+                    'speed': random.uniform(0, 15),
+                    'battery': max(0, atos.drone_data[drone_id]['battery'] - 0.1)
+                })
+                
+                await websocket.send_json({
+                    "drone_id": drone_id,
+                    **atos.drone_data[drone_id],
+                    "anomaly": atos.anomalies
+                })
+                await asyncio.sleep(0.5)
+                
+            # Random anomaly simulation
+            if random.random() < 0.02:
+                atos.anomalies = not atos.anomalies
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        print("Client disconnected")
+        print("Drone client disconnected")
 
+@app.websocket("/api/v1/ws/atos")
+async def atos_websocket(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get('command') == 'start':
+                atos.test_active = True
+                atos.anomalies = False
+            elif data.get('command') == 'stop':
+                atos.test_active = False
+            await websocket.send_json({
+                "status": "success",
+                "test_active": atos.test_active,
+                "anomaly": atos.anomalies
+            })
+    except WebSocketDisconnect:
+        print("ATOS client disconnected")
+
+# Video Endpoints
+@app.get("/api/v1/video_feed/drone1")
+async def drone1_feed():
+    return StreamingResponse(generate_drone_frames(1))
+
+@app.get("/api/v1/video_feed/drone2")
+async def drone2_feed():
+    return StreamingResponse(generate_drone_frames(2))
 
 @app.get("/api/v1/health")
 def health_check():
-    return {"status": "ok"}
-
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
 def run_server():
     uvicorn.run(
@@ -65,3 +99,6 @@ def run_server():
         port=8000,
         reload=False,
     )
+
+if __name__ == "__main__":
+    uvicorn.run("frontendWebsocket:app", host="0.0.0.0", port=8000, reload=True)

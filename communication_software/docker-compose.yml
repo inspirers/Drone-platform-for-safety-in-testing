@@ -37,6 +37,25 @@ services:
     container_name: isoObject
     networks:
       - atos-net
+    deploy: # Add deploy section for resource limits
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
+  frontend:
+    image: nginx:latest
+    container_name: frontend
+    build: 
+      context: ../frontend
+      dockerfile: ../frontend/Dockerfile
+    networks:
+      - atos-net
+    ports:
+      - 8001:80
+
 networks:
   atos-net:
     driver: bridge
