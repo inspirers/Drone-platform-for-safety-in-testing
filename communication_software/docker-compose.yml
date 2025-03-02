@@ -48,9 +48,6 @@ services:
   frontend:
     image: nginx:latest
     container_name: frontend
-    environment:
-      - DRONE_WS_URL=ws://localhost:8000/api/v1/ws/drone
-      - ATOS_WS_URL=ws://localhost:8000/api/v1/ws/atos
     build: 
       context: ../frontend
       dockerfile: ../frontend/Dockerfile

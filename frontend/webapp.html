@@ -105,8 +105,8 @@
         };
 
         // WebSocket Connections
-        const droneWS = new WebSocket('ws://localhost:8000/api/v1/ws/drone');
-        const atosWS = new WebSocket('ws://localhost:8000/api/v1/ws/atos');
+        const droneWS = new WebSocket('${BACKEND_URL}/api/v1/ws/drone');
+        const atosWS = new WebSocket('${BACKEND_URL}/api/v1/ws/atos');
 
         // Handle Layout Changes
         document.getElementById('layoutSelect').addEventListener('change', function() {
