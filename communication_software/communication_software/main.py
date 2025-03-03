@@ -4,17 +4,16 @@ import asyncio
 import time
 import threading
 from communication_software.frontendWebsocket import run_server
-                                    
+from communication_software.multiple_drone_optimization import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 
 import rclpy
 
 def main() -> None:
-
     Interface.print_welcome()
-    print("Trying to initialize rclpy")
     if not rclpy.ok():
+        print("Trying to initialize rclpy")
         rclpy.init()
 
     ATOScommunicator = AtosCommunication()  
@@ -44,7 +43,9 @@ def main() -> None:
                     print("Coordinates could not be found")
                     continue
                 #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-
+                flyTo1, flyTo2, angle1, angle2 = getDronesLoc(trajectoryList,droneOrigin)
+                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}")
+                
                 start_server(ATOScommunicator)
 
                 communication = Communication()
@@ -68,6 +69,7 @@ def main() -> None:
     finally:
         ATOScommunicator.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

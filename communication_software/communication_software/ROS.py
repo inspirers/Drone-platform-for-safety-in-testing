@@ -167,7 +167,7 @@ class AtosCommunication(Node):
             self.get_logger().warn('service not available, waiting again...')
 
         object_ids_req = GetObjectIds.Request()
-
+        print("Requested object ids received: ",object_ids_req)
         future = self.get_id_client.call_async(object_ids_req)
 
         # TODO: add timeout for the following line, could spin forever
