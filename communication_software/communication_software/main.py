@@ -16,61 +16,65 @@ def main() -> None:
     if not rclpy.ok():
         rclpy.init()
 
-    while True:
-        #if this method returns true it means that the user wants to proceed
-        if Interface.print_menu():
-            ip = Interface.get_ip()
+    ATOScommunicator = AtosCommunication()  
+    try:
+        while True:
+            #if this method returns true it means that the user wants to proceed
+            if Interface.print_menu():
+                ip = Interface.get_ip()
 
-            print("Trying to initialize rclpy")
-            # rclpy.init()
-            #Try to get the coordinates from the ROS2 service
-            ATOScommunicator = AtosCommunication()
-            ATOScommunicator.publish_init()
-            time.sleep(5)
+                print("Trying to initialize rclpy")
+                # rclpy.init()
+                #Try to get the coordinates from the ROS2 service
+                ATOScommunicator.publish_init()
+                time.sleep(5)
 
-            origo = ATOScommunicator.get_origin_coordinates()
+                origo = ATOScommunicator.get_origin_coordinates()
 
-                #Gets the trajectories for all of the objects
-            ids = ATOScommunicator.get_object_ids()
-            trajectoryList = {}
-            for id in ids:
-                coordlist = ATOScommunicator.get_object_traj(id)
-                trajectoryList[id] = coordlist
+                    #Gets the trajectories for all of the objects
+                ids = ATOScommunicator.get_object_ids()
+                trajectoryList = {}
+                for id in ids:
+                    coordlist = ATOScommunicator.get_object_traj(id)
+                    trajectoryList[id] = coordlist
 
-            droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList,origo)
+                droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList,origo)
 
-            #If the coordinate can not be found, None will be returned and the script will not continue
-            if droneOrigin == None:
-                print("Coordinates could not be found")
-                continue
-            #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
+                #If the coordinate can not be found, None will be returned and the script will not continue
+                if droneOrigin == None:
+                    print("Coordinates could not be found")
+                    continue
+                #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
 
-            start_server()
+                start_server(ATOScommunicator)
 
-            communication = Communication()
-            try:
-                print("Server starting, press ctrl + c to exit")
-                asyncio.run(communication.send_coordinates_websocket(coordinates=droneOrigin, angle=angle, ip=ip))
-            except KeyboardInterrupt:
-                print("The server was interrupted!")
-                continue
-            except OSError as e:
-                print(e)
+                communication = Communication()
+                try:
+                    print("Server starting, press ctrl + c to exit")
+                    asyncio.run(communication.send_coordinates_websocket(coordinates=droneOrigin, angle=angle, ip=ip))
+                except KeyboardInterrupt:
+                    print("The server was interrupted!")
+                    continue
+                except OSError as e:
+                    print(e)
 
-                continue
-            except Exception as e:
-                print(e)
-                continue
+                    continue
+                except Exception as e:
+                    print(e)
+                    continue
 
-        else:
-            Interface.print_goodbye()
-            break
+            else:
+                Interface.print_goodbye()
+                break
+    finally:
+        ATOScommunicator.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
 
 
-def start_server():
-    server_thread = threading.Thread(target=run_server, daemon=True)
+def start_server(atos_communicator):
+    server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
     server_thread.start()
     print("FastAPI server started in a separate thread!")
