@@ -2,8 +2,6 @@ import asyncio
 import random
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-
-# from communication_software.ROS import AtosCommunication
 import uvicorn
 import cv2
 import numpy as np
@@ -68,70 +66,30 @@ async def drone_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            for drone_id in [1, 2]:
-                # Update drone metrics
-                atos.drone_data[drone_id].update(
-                    {
-                        "lat": atos.drone_data[drone_id]["lat"]
-                        + random.uniform(-0.0001, 0.0001),
-                        "lng": atos.drone_data[drone_id]["lng"]
-                        + random.uniform(-0.0001, 0.0001),
-                        "alt": 150 + random.randint(-5, 5),
-                        "speed": random.uniform(0, 15),
-                        "battery": max(0, atos.drone_data[drone_id]["battery"] - 0.1),
-                    }
-                )
-
-                await websocket.send_json(
-                    {
-                        "drone_id": drone_id,
-                        **atos.drone_data[drone_id],
-                        "anomaly": atos.anomalies,
-                    }
-                )
-                await asyncio.sleep(0.5)
-
-            # Random anomaly simulation
-            if random.random() < 0.02:
-                atos.anomalies = not atos.anomalies
-    except WebSocketDisconnect:
-        print("Drone client disconnected")
-
-
-@app.websocket("/api/v1/ws/drone")
-async def drone_websocket(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
             try:
                 for drone_id in [1, 2]:
-                    try:
-                        atos.drone_data[drone_id].update(
-                            {
-                                "lat": atos.drone_data[drone_id]["lat"]
-                                + random.uniform(-0.0001, 0.0001),
-                                "lng": atos.drone_data[drone_id]["lng"]
-                                + random.uniform(-0.0001, 0.0001),
-                                "alt": 150 + random.randint(-5, 5),
-                                "speed": random.uniform(0, 15),
-                                "battery": max(
-                                    0, atos.drone_data[drone_id]["battery"] - 0.1
-                                ),
-                            }
-                        )
+                    atos.drone_data[drone_id].update(
+                        {
+                            "lat": atos.drone_data[drone_id]["lat"]
+                            + random.uniform(-0.0001, 0.0001),
+                            "lng": atos.drone_data[drone_id]["lng"]
+                            + random.uniform(-0.0001, 0.0001),
+                            "alt": 150 + random.randint(-5, 5),
+                            "speed": random.uniform(0, 15),
+                            "battery": max(
+                                0, atos.drone_data[drone_id]["battery"] - 0.1
+                            ),
+                        }
+                    )
 
-                        await websocket.send_json(
-                            {
-                                "drone_id": drone_id,
-                                **atos.drone_data[drone_id],
-                                "anomaly": atos.anomalies,
-                            }
-                        )
-                        await asyncio.sleep(0.5)
-
-                    except Exception as e:
-                        print(f"Error updating drone {drone_id}: {e}")
-
+                    await websocket.send_json(
+                        {
+                            "drone_id": drone_id,
+                            **atos.drone_data[drone_id],
+                            "anomaly": atos.anomalies,
+                        }
+                    )
+                    await asyncio.sleep(0.5)
             except WebSocketDisconnect:
                 print("Drone client disconnected")
                 break
@@ -141,6 +99,30 @@ async def drone_websocket(websocket: WebSocket):
                 break
     except Exception as e:
         print(f"Unexpected error in drone_websocket: {e}")
+
+
+@app.websocket("/api/v1/ws/atos")
+async def atos_websocket(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get("command") == "start":
+                atos.test_active = True
+                atos.anomalies = False
+                ATOScommunicator.publish_start()
+            elif data.get("command") == "stop":
+                atos.test_active = False
+                ATOScommunicator.publish_abort()
+            await websocket.send_json(
+                {
+                    "status": "success",
+                    "test_active": atos.test_active,
+                    "anomaly": atos.anomalies,
+                }
+            )
+    except WebSocketDisconnect:
+        print("ATOS client disconnected")
 
 
 # Video Endpoints

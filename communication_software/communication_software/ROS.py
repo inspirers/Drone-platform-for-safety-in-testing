@@ -124,7 +124,7 @@ class AtosCommunication(Node):
     def publish_abort(self):
         """Method for publishing an abort message to ATOS
         """
-        self.init_pub.publish(Empty())
+        self.abort_pub.publish(Empty())
         self.get_logger().info('Publishing Abort signal')
 
     def get_test_origin_callback(self):
