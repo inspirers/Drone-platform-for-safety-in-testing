@@ -37,9 +37,6 @@ class ATOSController:
 
 atos = ATOSController()
 
-# ATOScommunicator = AtosCommunication()
-
-
 # Video Generation
 async def generate_drone_frames(drone_id):
     while True:
