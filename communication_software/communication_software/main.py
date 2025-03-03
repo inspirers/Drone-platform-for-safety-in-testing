@@ -13,6 +13,7 @@ import rclpy
 def main() -> None:
 
     Interface.print_welcome()
+    print("Trying to initialize rclpy")
     if not rclpy.ok():
         rclpy.init()
 
@@ -23,8 +24,6 @@ def main() -> None:
             if Interface.print_menu():
                 ip = Interface.get_ip()
 
-                print("Trying to initialize rclpy")
-                # rclpy.init()
                 #Try to get the coordinates from the ROS2 service
                 ATOScommunicator.publish_init()
                 time.sleep(5)
