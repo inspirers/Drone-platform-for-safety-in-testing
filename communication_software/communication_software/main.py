@@ -46,12 +46,19 @@ def main() -> None:
                 flyTo1, flyTo2, angle1, angle2 = getDronesLoc(trajectoryList,droneOrigin)
                 print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}")
                 
+                droneOrigins = flyTo1,flyTo2
+                angles = angle1,angle2
+                
+                if len(droneOrigins) != len(angles):
+                    print("Mismatch in the number of drone origins and angles.")
+                    continue
+                
                 start_server(ATOScommunicator)
 
                 communication = Communication()
                 try:
                     print("Server starting, press ctrl + c to exit")
-                    asyncio.run(communication.send_coordinates_websocket(coordinates=droneOrigin, angle=angle, ip=ip))
+                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)) 
                 except KeyboardInterrupt:
                     print("The server was interrupted!")
                     continue
