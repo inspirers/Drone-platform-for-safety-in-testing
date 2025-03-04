@@ -1,3 +1,4 @@
+import json
 import websockets
 from communication_software.CoordinateHandler import Coordinate
 
@@ -82,10 +83,13 @@ class Communication:
         """Sends assigned coordinates for a specific connection."""
         if connection_id in self.coordinates:
             lat, lng, alt, angle = self.coordinates[connection_id]
-            #The if statement is a hardcoded adjustment to fit the messege into last years application
-            if len(alt) < 2:
-                alt = alt +'.'
-            message = f"COORDS/{lat}/{lng}/{alt}/{angle}"
+
+            message = json.dumps({
+                "lat": lat,
+                "lng": lng,
+                "alt": alt,
+                "angle": angle
+            })
             print(f"Sending to {connection_id}: {message}")  # Debugging message before sending
             try:
                 await self.connections[connection_id].send(message)

@@ -15,6 +15,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
 public class CoordinatesActivity extends AppCompatActivity {
 
     double lat;
@@ -23,7 +25,6 @@ public class CoordinatesActivity extends AppCompatActivity {
     int jaw;
 
     WebsocketClientHandler websocketClientHandler;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +36,7 @@ public class CoordinatesActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        try{
+        try {
             FlightManager flightManager = FlightManager.getFlightManager();
 
             double stored_lat = flightManager.input_lat;
@@ -46,19 +47,21 @@ public class CoordinatesActivity extends AppCompatActivity {
             TextView lng_out = findViewById(R.id.lonOutput);
             TextView alt_out = findViewById(R.id.altOutput);
 
-            if (stored_alt != 0 && stored_lat != 0 && stored_lng != 0){
+            if (stored_alt != 0 && stored_lat != 0 && stored_lng != 0) {
                 lat_out.setText(String.valueOf(stored_lat));
                 lng_out.setText(String.valueOf(stored_lng));
                 alt_out.setText(String.valueOf(stored_alt));
             }
 
-        } catch(Exception ignored){}
+        } catch (Exception ignored) {
+        }
     }
 
     /**
      * This method converts the input in the text fields to numbers and
      * stores them in the flight manager. If something is not correct,
      * the method will show toasts to inform the user.
+     * 
      * @param v The view which calls the function
      */
 
@@ -81,7 +84,7 @@ public class CoordinatesActivity extends AppCompatActivity {
         String jaw_input = jaw_in.getText().toString();
         jaw_out.setText(jaw_input);
 
-        if(jaw_input.isEmpty()){
+        if (jaw_input.isEmpty()) {
             jaw_input = "0";
             jaw_out.setText(jaw_input);
         } else if (parseInt(jaw_input) >= 180 || parseInt(jaw_input) <= -180) {
@@ -89,21 +92,21 @@ public class CoordinatesActivity extends AppCompatActivity {
             return;
         }
 
-        if(lat_input.isEmpty() || lng_input.isEmpty() || alt_input.isEmpty()){
+        if (lat_input.isEmpty() || lng_input.isEmpty() || alt_input.isEmpty()) {
             Toast.makeText(this, "Empty inputs not allowed", Toast.LENGTH_LONG).show();
-        } else{
+        } else {
             try {
                 lat = parseDouble(lat_input);
                 lng = parseDouble(lng_input);
                 alt = parseFloat(alt_input);
                 jaw = parseInt(jaw_input);
-            } catch (NumberFormatException e){
+            } catch (NumberFormatException e) {
                 Toast.makeText(this, "All inputs must be numbers", Toast.LENGTH_LONG).show();
             }
 
-            if(alt <= 5){
+            if (alt <= 5) {
                 Toast.makeText(this, "Altitude must be higher than 5 meters, nothing loaded", Toast.LENGTH_LONG).show();
-            } else{
+            } else {
                 try {
                     FlightManager.getFlightManager().input_lat = lat;
                     FlightManager.getFlightManager().input_lng = lng;
@@ -113,8 +116,9 @@ public class CoordinatesActivity extends AppCompatActivity {
                     Toast.makeText(this, "Coordinates ready for the flight manager", Toast.LENGTH_SHORT).show();
                     Log.d("info", "coordinates hopefully loaded");
 
-                } catch(Exception e){
-                    Toast.makeText(this, "Coordinates failed to reach Flightmanager, check if drone is connected", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, "Coordinates failed to reach Flightmanager, check if drone is connected",
+                            Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -122,9 +126,10 @@ public class CoordinatesActivity extends AppCompatActivity {
 
     /**
      * Returns from the Coordinates activity to the main screen.
+     * 
      * @param v The calling view
      */
-    public void backToHome(View v){
+    public void backToHome(View v) {
         Intent openMainActivity = new Intent(CoordinatesActivity.this, MainActivity.class);
         openMainActivity.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         startActivity(openMainActivity);
@@ -133,26 +138,30 @@ public class CoordinatesActivity extends AppCompatActivity {
     /**
      * If there is an active connection, managed in the Server Setting menu,
      * this button can load the coordinates from the server.
-     * To prevent the app from crashing if this fails, the check is performed in an AsyncTask.
-     * WARNING! The server must output in the correct format, and no check is made for that
+     * To prevent the app from crashing if this fails, the check is performed in an
+     * AsyncTask.
+     * WARNING! The server must output in the correct format, and no check is made
+     * for that
      */
-    public void loadCoordsFromServer(View v){
+    public void loadCoordsFromServer(View v) {
 
         if (WebsocketClientHandler.isInstanceCreated() && websocketClientHandler.send("REQ/COORDS")) {
             AsyncTask.execute(getAndApplyCoordinateRunnable);
 
-        } else{
+        } else {
             Toast.makeText(this, "No server connected...", Toast.LENGTH_SHORT).show();
         }
 
     }
 
     /**
-     * Loads the coordinates of Mossens IP (57.684478 / 11.979772). Useful for debugging if
+     * Loads the coordinates of Mossens IP (57.684478 / 11.979772). Useful for
+     * debugging if
      * you are at Chalmers.
+     * 
      * @param v The calling View
      */
-    public void loadMossCoords(View v){
+    public void loadMossCoords(View v) {
 
         EditText lat_in = findViewById(R.id.latInput);
         EditText lon_in = findViewById(R.id.lonInput);
@@ -171,7 +180,7 @@ public class CoordinatesActivity extends AppCompatActivity {
         @Override
         public void run() {
             String lastString = websocketClientHandler.getLastStringReceived();
-            if (lastString.contains("COORDS/")) {
+            if (lastString.contains("{")) {
                 runOnUiThread(applyCoordinatesOnUI);
             }
         }
@@ -183,26 +192,31 @@ public class CoordinatesActivity extends AppCompatActivity {
     final private Runnable applyCoordinatesOnUI = new Runnable() {
         @Override
         public void run() {
-            final String[] server_coord = new String[4];
             String lastString = websocketClientHandler.getLastStringReceived();
 
-            server_coord[0] = lastString.substring(7, 16);
-            server_coord[1] = lastString.substring(17, 26);
-            server_coord[2] = lastString.substring(27, 29); //Altitude
-            server_coord[3] = lastString.substring(30); //Jaw of aircraft
-          
-            EditText lat_in = findViewById(R.id.latInput);
-            EditText lng_in = findViewById(R.id.lonInput);
-            EditText alt_in = findViewById(R.id.altInput);
-            EditText jaw_in = findViewById(R.id.jawInput);
+            try {
+                JSONObject json = new JSONObject(lastString);
 
-            lat_in.setText(server_coord[0]);
-            lng_in.setText(server_coord[1]);
-            alt_in.setText(server_coord[2]);
-            jaw_in.setText(server_coord[3]);
+                String lat = json.getString("lat");
+                String lng = json.getString("lng");
+                String alt = json.getString("alt");
+                String angle = json.getString("angle");
+
+                EditText lat_in = findViewById(R.id.latInput);
+                EditText lng_in = findViewById(R.id.lonInput);
+                EditText alt_in = findViewById(R.id.altInput);
+                EditText jaw_in = findViewById(R.id.jawInput);
+
+                lat_in.setText(lat);
+                lng_in.setText(lng);
+                alt_in.setText(alt);
+                jaw_in.setText(angle);
+
+            } catch (Exception e) {
+                e.printStackTrace(); // Handle parsing error
+            }
 
         }
     };
-
 
 }
