@@ -73,6 +73,20 @@ public class WebsocketClientHandler {
             public void onTextReceived(String message) {
                 Log.d(TAG, "Received: " + message);
                 lastStringReceived = message;
+                
+
+                //check which mode is selected
+                if (message.equalsIgnoreCase("MAVLINK_ENABLED")) {
+                    Log.d(TAG, "MAVLink Enabled");
+                    SharedPreferences prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+                    prefs.edit().putString("droneMode", "MAVLink").apply();
+
+                } else if (message.equalsIgnoreCase("DJI_ENABLED")) {
+                    Log.d(TAG, "DJI Enabled");
+                    SharedPreferences prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+                    prefs.edit().putString("droneMode", "DJI").apply();
+                }
+
                 new_string.release();
             }
 

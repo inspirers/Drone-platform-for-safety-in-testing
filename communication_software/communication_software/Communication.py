@@ -10,6 +10,7 @@ class Communication:
         self.coordinates = {}  # Stores unique coordinates per client {connection_id: (Coordinate, angle)}
         self.drone_coordinates = []  # Stores all available drone coordinates
         self.client_index = 0  # Tracks which drone coordinate to assign next
+        self.current_mode = "MAVLink"
 
     async def send_coordinates_websocket(self, ip: str, droneOrigins: list, angles: list) -> None:
         """Starts the WebSocket server and stores drone coordinates."""
@@ -34,8 +35,21 @@ class Communication:
 
         # Return as tuple
         return (lat, lng, alt, angle)
+    
+    async def broadcast_toggle_mode(self, mode: str) -> None:
+        """Broadcasts the selected mode (MAVLink or DJI) to all connected WebSocket clients."""
+        message = json.dumps({"mode": mode})  # Send JSON-formatted message
+        print(f"Broadcasting mode: {mode} to all clients")
 
-    async def webs_server(self, ws: websockets.WebSocketServerProtocol) -> None:
+        for connection_id, ws in self.connections.items():
+            try:
+                await ws.send(message)
+                print(f"Sent mode {mode} to {connection_id}")
+            except websockets.exceptions.ConnectionClosed:
+                print(f"Connection {connection_id} closed, removing.")
+                self.cleanup_connection(connection_id)
+
+    async def webs_server(self, ws) -> None:
         """Handles WebSocket connections."""
         print("Client connected.")
         connection_id = str(id(ws))  #Create a unique connection ID
@@ -47,8 +61,14 @@ class Communication:
         if available_coords:
             assigned_coord = available_coords[0]  
         else:
-            assigned_coord = self.drone_coordinates[self.client_index % len(self.drone_coordinates)]
-            self.client_index += 1 
+            # Added this code, test with Chalmers / was getting error about division by 0
+            if len(self.drone_coordinates) > 0:
+                assigned_coord = self.drone_coordinates[self.client_index % len(self.drone_coordinates)]
+                self.client_index += 1
+            else:
+                print("No drone coordinates available! Assigning default values.")
+                assigned_coord = ("0.000000", "0.000000", "0", "0")  # Assign default lat, lng, alt, angle
+            # up to here 
 
         self.coordinates[connection_id] = assigned_coord
         print(f"Assigned coordinate {assigned_coord} to client {connection_id}")
@@ -75,7 +95,18 @@ class Communication:
         print(f"Received from {connection_id}: {frame}")
         
         if frame.startswith("REQ/COORDS"):
-            await self.send_coords(connection_id)  # Send coordinates to requesting client
+            await self.send_coords(connection_id)  
+
+        elif frame == "MAVLINK_ENABLED":
+            self.current_mode = "MAVLink"
+            print(f"Switching to MAVLink mode from {connection_id}")
+            await self.broadcast_toggle_mode("MAVLINK_ENABLED")
+
+        elif frame == "DJI_ENABLED":
+            self.current_mode = "DJI"
+            print(f"Switching to DJI mode from {connection_id}")
+            await self.broadcast_toggle_mode("DJI_ENABLED")
+
         else:
             print(f"Unknown command from {connection_id}: {frame}")
 
@@ -99,3 +130,15 @@ class Communication:
                 self.cleanup_connection(connection_id)
         else:
             print(f"No coordinates found for {connection_id}")
+
+
+import asyncio
+
+if __name__ == "__main__":
+    print("Starting WebSocket Server...")
+    comms = Communication()
+    
+    try:
+        asyncio.run(comms.send_coordinates_websocket("0.0.0.0", [], []))
+    except KeyboardInterrupt:
+        print("WebSocket Server Stopped Manually.")

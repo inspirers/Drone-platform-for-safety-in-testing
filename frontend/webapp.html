@@ -116,6 +116,22 @@
         // WebSocket Connections
         const droneWS = new WebSocket('${BACKEND_URL}/api/v1/ws/drone');
         const atosWS = new WebSocket('${BACKEND_URL}/api/v1/ws/atos');
+        const droneControlWS = new WebSocket("ws://localhost:14500"); //Replace "localhost" with your IP
+
+
+        // Send toggle switch value to WebSocket
+        document.getElementById("droneSelect").addEventListener("change", function() {
+                const selectedMode = this.value;
+                const message = selectedMode === "MAVLink" ? "MAVLINK_ENABLED" : "DJI_ENABLED";
+
+                if (droneControlWS.readyState === WebSocket.OPEN) {
+                    droneControlWS.send(message);
+                    console.log("Sent to WebSocket:", message);
+                } else {
+                    console.log("WebSocket not open, message not sent.");
+                }
+            });
+
 
         // Handle Layout Changes
         document.getElementById('layoutSelect').addEventListener('change', function() {
