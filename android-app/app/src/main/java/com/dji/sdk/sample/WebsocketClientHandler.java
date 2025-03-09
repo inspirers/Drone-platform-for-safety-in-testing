@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Semaphore;
 import dev.gustavoavila.websocketclient.WebSocketClient;
-
+import org.json.JSONObject;
 import dev.gustavoavila.websocketclient.WebSocketClient;
 
 /**
@@ -68,9 +68,12 @@ public class WebsocketClientHandler {
         clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
+    
 
     private WebsocketClientHandler(Context context, URI uri) {
+        WebsocketClientHandler.appContext = context.getApplicationContext(); // Assign appContext
         this.uri = uri;
+    
         //Use the webSocketClient implementation in TODO: Link
         //These methods are called by the package, rather than by our code.
         webSocketClient = new WebSocketClient(uri) {
@@ -86,38 +89,42 @@ public class WebsocketClientHandler {
                 Log.d(TAG, "Received WebSocket Message: " + message);
                 lastStringReceived = message;
 
-                // ✅ Ensure appContext is not null
-                if (appContext == null) {
-                    Log.e(TAG, "appContext is null, cannot save drone mode.");
-                    return;
+                try {
+                    // Parse the JSON message
+                    JSONObject jsonMessage = new JSONObject(message);
+                    String mode = jsonMessage.optString("mode", "UNKNOWN");
+
+                    Log.d(TAG, "Extracted Mode: " + mode);  // Debugging log
+
+                    // Use SharedPreferences to store the mode
+                    SharedPreferences prefs = appContext.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = prefs.edit();
+
+                    switch (mode.toUpperCase()) {
+                        case "MAVLINK_ENABLED":
+                            Log.d(TAG, "MAVLink Mode Enabled");
+                            editor.putString("droneMode", "MAVLink");
+                            break;
+
+                        case "DJI_ENABLED":
+                            Log.d(TAG, "DJI Mode Enabled");
+                            editor.putString("droneMode", "DJI");
+                            break;
+
+                        default:
+                            Log.w(TAG, "⚠ Unknown mode received: " + message);
+                            return; // Exit if mode is not recognized
+                    }
+
+                    editor.apply();
+                    Log.d(TAG, "Saved droneMode to SharedPreferences: " + prefs.getString("droneMode", "NOT_SET"));
+
+                    new_string.release();
+
+                } catch (Exception e) {
+                    Log.e(TAG, "JSON Parsing Error: " + e.getMessage());
                 }
-
-                // ✅ Use the static appContext to access SharedPreferences
-                SharedPreferences prefs = appContext.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = prefs.edit();
-
-                switch (message.toUpperCase()) {
-                    case "MAVLINK_ENABLED":
-                        Log.d(TAG, "MAVLink Mode Enabled");
-                        editor.putString("droneMode", "MAVLink");
-                        break;
-
-                    case "DJI_ENABLED":
-                        Log.d(TAG, "DJI Mode Enabled");
-                        editor.putString("droneMode", "DJI");
-                        break;
-
-                    default:
-                        Log.w(TAG, "Unknown mode received: " + message);
-                        return; // Exit if mode is not recognized
-                }
-
-                editor.apply();
-                Log.d(TAG, "Saved droneMode to SharedPreferences: " + prefs.getString("droneMode", "NOT_SET"));
-
-                new_string.release();
             }
-
             
 
 

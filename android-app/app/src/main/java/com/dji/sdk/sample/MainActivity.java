@@ -246,19 +246,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-    private void initializeWebSocket() {
-        new Thread(() -> {
-            try {
-                URI uri = new URI("ws://10.0.2.2:14500");  // ✅ Replace with actual WebSocket server IP
-                WebsocketClientHandler.createInstance(getApplicationContext(), uri);
-                Log.d("WebsocketTest", "✅ WebSocket manually initialized");
-            } catch (Exception e) {
-                Log.e("WebsocketTest", "❌ WebSocket Error: " + e.getMessage());
-            }
-        }).start();
-    }
-    
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
