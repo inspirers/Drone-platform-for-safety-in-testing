@@ -62,13 +62,13 @@ public class ServerActivity extends AppCompatActivity {
 
         // There is a new URI in the field, create a new Client
         if (WebsocketClientHandler.isInstanceCreated() && newUri != websocketClientHandler.getUri()){
-            websocketClientHandler = WebsocketClientHandler.resetClientHandler(newUri);
+            websocketClientHandler = WebsocketClientHandler.resetClientHandler(this, newUri);
         } else if (WebsocketClientHandler.isInstanceCreated()) {
             //Otherwise, it's the same socket, just get the new one
             websocketClientHandler = WebsocketClientHandler.getInstance();
         } else{
             // If there is none, create a new one.
-            websocketClientHandler = WebsocketClientHandler.createInstance(newUri);
+            websocketClientHandler = WebsocketClientHandler.createInstance(this, newUri);
         }
 
         //Connect only if the client isn't connected

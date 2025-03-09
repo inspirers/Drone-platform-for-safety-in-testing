@@ -7,6 +7,16 @@ import androidx.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Semaphore;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import androidx.annotation.Nullable;
+import java.io.IOException;
+import java.net.URI;
+import java.util.concurrent.Semaphore;
+import dev.gustavoavila.websocketclient.WebSocketClient;
 
 import dev.gustavoavila.websocketclient.WebSocketClient;
 
@@ -28,6 +38,8 @@ public class WebsocketClientHandler {
     private byte[] lastBytesReceived = null;
     public static Semaphore new_string = new Semaphore(0);
     public static Semaphore status_update = new Semaphore(0);
+    private static Context appContext; // ✅ This must be static
+
 
     /**
      * Get the active instance of the WebsocketClientHandler.
@@ -52,12 +64,12 @@ public class WebsocketClientHandler {
      * @param uri The URI of the server
      * @return The instance of WebsocketClient
      */
-    public static WebsocketClientHandler createInstance(URI uri){
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler createInstance(Context context, URI uri) {
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
-    private WebsocketClientHandler(URI uri){
+    private WebsocketClientHandler(Context context, URI uri) {
         this.uri = uri;
         //Use the webSocketClient implementation in TODO: Link
         //These methods are called by the package, rather than by our code.
@@ -71,24 +83,43 @@ public class WebsocketClientHandler {
 
             @Override
             public void onTextReceived(String message) {
-                Log.d(TAG, "Received: " + message);
+                Log.d(TAG, "Received WebSocket Message: " + message);
                 lastStringReceived = message;
-                
 
-                //check which mode is selected
-                if (message.equalsIgnoreCase("MAVLINK_ENABLED")) {
-                    Log.d(TAG, "MAVLink Enabled");
-                    SharedPreferences prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
-                    prefs.edit().putString("droneMode", "MAVLink").apply();
-
-                } else if (message.equalsIgnoreCase("DJI_ENABLED")) {
-                    Log.d(TAG, "DJI Enabled");
-                    SharedPreferences prefs = context.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
-                    prefs.edit().putString("droneMode", "DJI").apply();
+                // ✅ Ensure appContext is not null
+                if (appContext == null) {
+                    Log.e(TAG, "appContext is null, cannot save drone mode.");
+                    return;
                 }
+
+                // ✅ Use the static appContext to access SharedPreferences
+                SharedPreferences prefs = appContext.getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+
+                switch (message.toUpperCase()) {
+                    case "MAVLINK_ENABLED":
+                        Log.d(TAG, "MAVLink Mode Enabled");
+                        editor.putString("droneMode", "MAVLink");
+                        break;
+
+                    case "DJI_ENABLED":
+                        Log.d(TAG, "DJI Mode Enabled");
+                        editor.putString("droneMode", "DJI");
+                        break;
+
+                    default:
+                        Log.w(TAG, "Unknown mode received: " + message);
+                        return; // Exit if mode is not recognized
+                }
+
+                editor.apply();
+                Log.d(TAG, "Saved droneMode to SharedPreferences: " + prefs.getString("droneMode", "NOT_SET"));
 
                 new_string.release();
             }
+
+            
+
 
             @Override
             public void onBinaryReceived(byte[] data) {
@@ -140,8 +171,8 @@ public class WebsocketClientHandler {
      * Note that all received data is lost.
      * @param uri The URI for the new Client
      */
-    public static WebsocketClientHandler resetClientHandler(URI uri) {
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler resetClientHandler(Context context, URI uri) {
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
