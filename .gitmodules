@@ -1,3 +1,0 @@
-[submodule "external/MAVLink"]
-	path = external/MAVLink
-	url = https://github.com/ArduPilot/MAVLink.git
