@@ -47,8 +47,14 @@ android {
     buildFeatures {
         viewBinding true
     }
-}
 
+    sourceSets {
+        main {
+            java.srcDirs += 'src/main/java/MAVLink_Java'
+        }
+    }
+
+}
 
 dependencies {
 
