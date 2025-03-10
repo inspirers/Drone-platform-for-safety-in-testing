@@ -7,6 +7,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +31,12 @@ import dji.sdk.mission.waypoint.WaypointMissionOperatorListener;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKManager;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+
+
+
 class FlightManager {
     private final float mSpeed = 6.0f; // Reasonable operatingspeed for the drone decided after testing
     private List<Waypoint> waypointList = new ArrayList<>(); //List for storing waypoint / -s
@@ -50,6 +57,12 @@ class FlightManager {
     public float input_alt;
     public int input_yaw;
     private WaypointMissionOperatorListener eventNotificationListener;
+
+
+    private String getDroneMode() {
+        SharedPreferences prefs = getContext().getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
+        return prefs.getString("droneMode", "DJI"); // Default to DJI mode
+    }    
 
 
     private FlightManager(){
@@ -149,52 +162,61 @@ class FlightManager {
      * @input_lng Longitude of test origin set either directly by user or ATOS
      * @input_alt Altitude at test origin required to capture the entirety of the test area
      */
-    public void onArm(){
-
-        //Checking battery before takeoff to prevent application crash
+    public void onArm() {
+        // Retrieve selected mode (DJI or MAVLink)
+        String droneMode = getDroneMode();
+        Log.d("FlightManager", "Selected Mode: " + droneMode);
+    
+        // If MAVLink mode is selected, call MAVLink function and exit
+        if (droneMode.equals("MAVLink")) {
+            startMAVLinkMission();
+            return; // Prevents running DJI-specific code
+        }
+    
+        // Existing DJI Logic (unchanged)
         int batteryPercent = batteryState.getChargeRemainingInPercent();
         if (batteryPercent <= 20) {
-            Toast.makeText(getContext(), "Battery to low to start mission, needs above 20%. Is: "+batteryPercent+"%", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "Battery too low to start mission, needs above 20%. Is: " + batteryPercent + "%", Toast.LENGTH_LONG).show();
             return;
         }
-
-        // Checking GPS before start to prevent crashes during next stage (GPS can be 1-5 and NONE)
+    
         GPSSignalLevel gpsSignalLevel = state.getGPSSignalLevel();
-        if ((Integer) gpsSignalLevel.value() <= 1 || gpsSignalLevel == GPSSignalLevel.NONE){
+        if ((Integer) gpsSignalLevel.value() <= 1 || gpsSignalLevel == GPSSignalLevel.NONE) {
             Toast.makeText(getContext(), "GPS not good enough, try again!", Toast.LENGTH_SHORT).show();
             return;
-        };
-
+        }
+    
         waypointList.clear();
         primarywaypointActions.clear();
-
-        // First waypoint, straight up from start to achieve two waypoints in total (required by DJI)
+    
         double raw_lat = state.getAircraftLocation().getLatitude();
         double raw_lng = state.getAircraftLocation().getLongitude();
-
         float lat = (float) raw_lat;
         float lng = (float) raw_lng;
         float alt = 10;
-
-        //Loading test origin coordinate into variable mWaypoint
+    
         Waypoint mWaypoint = new Waypoint(input_lat, input_lng, input_alt);
-
-        if (waypointMissionBuilder == null){
+    
+        if (waypointMissionBuilder == null) {
             waypointMissionBuilder = new WaypointMission.Builder();
         }
-
-        // Adding the first waypoint at index 0
+    
         waypointList.add(new Waypoint(lat, lng, alt));
         waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
-
-        // Adding main waypoint at test origin on index 1
+    
         waypointList.add(mWaypoint);
         waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
-
+    
         configWayPointMission();
-
         uploadWayPointMission();
     }
+    
+    // Minimal MAVLink function (to be implemented properly)
+    private void startMAVLinkMission() {
+        Log.d("FlightManager", "MAVLink mission started (implementation needed)");
+        Toast.makeText(getContext(), "MAVLink mission started (not yet implemented)", Toast.LENGTH_SHORT).show();
+    }
+    
 
     /**
      * ConfigWayPointMission() extends the onArm function and builds the characteristics of the waypoint mission.
@@ -263,7 +285,25 @@ class FlightManager {
      * method is called.
      */
     public void startWaypointMission(){
-        getWaypointMissionOperator().startMission(error -> Toast.makeText(getContext(), "Mission Start: " + (error == null ? "Successfully" : error.getDescription()), Toast.LENGTH_SHORT).show());
+
+            // Drone Mode
+            String droneMode = getDroneMode();
+            Log.d("FlightManager", "Selected Mode: " + droneMode);
+
+            if (droneMode.equals("MAVLink")) {
+                // Start MAVLink waypoint mission
+                startMAVLinkWaypointMission();
+            } else {
+                // Start DJI waypoint mission
+                getWaypointMissionOperator().startMission(error -> 
+                    Toast.makeText(getContext(), "Mission Start: " + (error == null ? "Successfully" : error.getDescription()), Toast.LENGTH_SHORT).show()
+                );
+            }
+        }
+
+    private void startMAVLinkWaypointMission() { // TODO
+        Log.d("FlightManager", "Starting MAVLink waypoint mission (Implementation needed)");
+        Toast.makeText(getContext(), "MAVLink waypoint mission starting (not yet implemented)", Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -271,9 +311,28 @@ class FlightManager {
      * This function is directly used when the Abort button is pressed
      * When called, the drone exits the waypoint mission and hovers in current position with manual controls activated
      */
-    public void abortWaypointMission(){
-        getWaypointMissionOperator().stopMission(error -> Toast.makeText(getContext(), "Mission Stop: " + (error == null ? "Successfully" : error.getDescription()), Toast.LENGTH_SHORT).show());
+    public void abortWaypointMission() {
+        // Drone Mode
+        String droneMode = getDroneMode();
+        Log.d("FlightManager", "Selected Mode: " + droneMode);
+    
+        if (droneMode.equals("MAVLink")) {
+            // Stop MAVLink waypoint mission
+            abortMAVLinkMission();
+        } else {
+            // Stop DJI waypoint mission
+            getWaypointMissionOperator().stopMission(error -> 
+                Toast.makeText(getContext(), "Mission Stop: " + (error == null ? "Successfully" : error.getDescription()), Toast.LENGTH_SHORT).show()
+            );
+        }
     }
+    
+    // Placeholder for MAVLink mission abort (To be implemented) TODO
+    private void abortMAVLinkMission() {
+        Log.d("FlightManager", "Aborting MAVLink mission (Implementation needed)");
+        Toast.makeText(getContext(), "MAVLink mission aborting (not yet implemented)", Toast.LENGTH_SHORT).show();
+    }
+    
 
     /**
      * Function to use when everything is done and the test is completed.

@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+
+
 android {
     namespace 'com.dji.sdk.sample'
     compileSdk 34
@@ -47,6 +49,7 @@ android {
     }
 }
 
+
 dependencies {
 
     implementation 'org.json:json:20210307'
@@ -66,3 +69,11 @@ dependencies {
 
 
 }
+
+
+
+
+
+
+
+
