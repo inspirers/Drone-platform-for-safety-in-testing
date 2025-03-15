@@ -3,6 +3,9 @@ package com.dji.sdk.sample;
 import com.MAVLink.common.msg_command_long;
 import com.MAVLink.enums.MAV_CMD;
 import com.MAVLink.MAVLinkPacket;
+import com.MAVLink.common.msg_mission_item;
+
+
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -38,6 +41,26 @@ public class MAVLinkStarter {
 
         try {
             byte[] encodedMessage = packet.encodePacket(); // Encode into bytes
+            DatagramPacket udpPacket = new DatagramPacket(encodedMessage, encodedMessage.length, droneAddress, dronePort);
+            socket.send(udpPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendMAVLinkCommand(msg_command_long command) {
+        try {
+            MAVLinkPacket packet = command.pack();
+            byte[] encodedMessage = packet.encodePacket();
+            DatagramPacket udpPacket = new DatagramPacket(encodedMessage, encodedMessage.length, droneAddress, dronePort);
+            socket.send(udpPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendMAVLinkWaypoint(msg_mission_item waypoint) {
+        try {
+            MAVLinkPacket packet = waypoint.pack();
+            byte[] encodedMessage = packet.encodePacket();
             DatagramPacket udpPacket = new DatagramPacket(encodedMessage, encodedMessage.length, droneAddress, dronePort);
             socket.send(udpPacket);
         } catch (IOException e) {

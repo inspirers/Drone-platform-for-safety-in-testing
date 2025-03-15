@@ -35,6 +35,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.MAVLink.common.msg_command_long;
+import com.MAVLink.enums.MAV_CMD;
+import com.MAVLink.MAVLinkPacket;
+import com.MAVLink.common.msg_mission_item;
 
 
 class FlightManager {
@@ -62,9 +66,8 @@ class FlightManager {
     private String getDroneMode() {
         SharedPreferences prefs = getContext().getSharedPreferences("AppSettings", Context.MODE_PRIVATE);
         return prefs.getString("droneMode", "DJI"); // Default to DJI mode
-    }    
-
-
+    }   
+    
     private FlightManager(){
         this.aircraft = (Aircraft) DJISDKManager.getInstance().getProduct();
         aircraft.getFlightController().setStateCallback(new FlightControllerState.Callback() {
@@ -167,13 +170,12 @@ class FlightManager {
         String droneMode = getDroneMode();
         Log.d("FlightManager", "Selected Mode: " + droneMode);
     
-        // If MAVLink mode is selected, call MAVLink function and exit
         if (droneMode.equals("MAVLink")) {
             startMAVLinkMission();
             return; // Prevents running DJI-specific code
         }
     
-        // Existing DJI Logic (unchanged)
+        // **DJI Mode Logic (UNCHANGED)**
         int batteryPercent = batteryState.getChargeRemainingInPercent();
         if (batteryPercent <= 20) {
             Toast.makeText(getContext(), "Battery too low to start mission, needs above 20%. Is: " + batteryPercent + "%", Toast.LENGTH_LONG).show();
@@ -209,13 +211,25 @@ class FlightManager {
     
         configWayPointMission();
         uploadWayPointMission();
+
+    // SPECIFIC MAVLINK MISSION STARTER    
+    }
+    private void startMAVLinkMission() {
+        Log.d("FlightManager", "Starting MAVLink mission");
+    
+        MAVLinkStarter mavLinkStarter = new MAVLinkStarter("192.168.1.2"); // Replace with actual drone IP
+
+        // ARM Drone
+        mavLinkStarter.sendMAVLinkCommand(MAV_CMD.MAV_CMD_COMPONENT_ARM_DISARM, 1);
+        Log.d("FlightManager", "MAVLink - Drone Armed");
+
+        // Takeoff 
+        mavLinkStarter.sendMAVLinkCommand(MAV_CMD.MAV_CMD_NAV_TAKEOFF, 10);
+        Log.d("FlightManager", "MAVLink - Takeoff Command Sent");
+    
+        Toast.makeText(getContext(), "MAVLink mission started!", Toast.LENGTH_SHORT).show();
     }
     
-    // Minimal MAVLink function (to be implemented properly)
-    private void startMAVLinkMission() {
-        Log.d("FlightManager", "MAVLink mission started (implementation needed)");
-        Toast.makeText(getContext(), "MAVLink mission started (not yet implemented)", Toast.LENGTH_SHORT).show();
-    }
     
 
     /**
@@ -301,10 +315,36 @@ class FlightManager {
             }
         }
 
-    private void startMAVLinkWaypointMission() { // TODO
-        Log.d("FlightManager", "Starting MAVLink waypoint mission (Implementation needed)");
-        Toast.makeText(getContext(), "MAVLink waypoint mission starting (not yet implemented)", Toast.LENGTH_SHORT).show();
-    }
+        private void startMAVLinkWaypointMission() {
+            Log.d("FlightManager", "Starting MAVLink Waypoint Mission");
+        
+            MAVLinkStarter mavLinkStarter = new MAVLinkStarter("192.168.1.2"); // Replace with drone IP
+        
+            // Convert DJI waypoints to MAVLink waypoints
+            for (Waypoint djiWaypoint : waypointList) {
+                msg_mission_item mavWaypoint = new msg_mission_item();
+                mavWaypoint.x = (float) djiWaypoint.coordinate.getLatitude();
+                mavWaypoint.y = (float) djiWaypoint.coordinate.getLongitude();
+                mavWaypoint.z = djiWaypoint.altitude;
+                mavWaypoint.command = MAV_CMD.MAV_CMD_NAV_WAYPOINT;
+                mavWaypoint.target_system = 1;
+                mavWaypoint.target_component = 1;
+                mavWaypoint.autocontinue = 1;
+        
+                // Send each MAVLink waypoint
+                mavLinkStarter.sendMAVLinkWaypoint(mavWaypoint);
+                try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); } // Small delay
+            }
+        
+            // Start MAVLink Mission
+            msg_command_long startMission = new msg_command_long();
+            startMission.command = MAV_CMD.MAV_CMD_MISSION_START;
+            startMission.target_system = 1;
+            startMission.target_component = 1;
+            mavLinkStarter.sendMAVLinkCommand(startMission);
+        
+            Log.d("FlightManager", "MAVLink Waypoint Mission Sent!");
+        }
 
     /**
      * Function for terminating current waypoint mission.
@@ -327,10 +367,40 @@ class FlightManager {
         }
     }
     
-    // Placeholder for MAVLink mission abort (To be implemented) TODO
     private void abortMAVLinkMission() {
-        Log.d("FlightManager", "Aborting MAVLink mission (Implementation needed)");
-        Toast.makeText(getContext(), "MAVLink mission aborting (not yet implemented)", Toast.LENGTH_SHORT).show();
+        Log.d("FlightManager", "Aborting MAVLink mission");
+    
+        MAVLinkStarter mavLinkStarter = new MAVLinkStarter("192.168.1.2");  // Replace with drone IP
+    
+        // Abort Mission
+        msg_command_long stopMission = new msg_command_long();
+        stopMission.command = MAV_CMD.MAV_CMD_DO_SET_MODE;
+        stopMission.param1 = 6; // MAV_MODE_GUIDED_DISARMED (Stops mission)
+        stopMission.target_system = 1;
+        stopMission.target_component = 1;
+        mavLinkStarter.sendMAVLinkCommand(stopMission);
+    
+        try { Thread.sleep(2000); } catch (InterruptedException e) { e.printStackTrace(); } // Wait 2 sec
+    
+        // Land the Drone
+        msg_command_long landCommand = new msg_command_long();
+        landCommand.command = MAV_CMD.MAV_CMD_NAV_LAND;
+        landCommand.target_system = 1;
+        landCommand.target_component = 1;
+        mavLinkStarter.sendMAVLinkCommand(landCommand);
+    
+        try { Thread.sleep(5000); } catch (InterruptedException e) { e.printStackTrace(); } // Wait 5 sec
+    
+        // Disarm Drone
+        msg_command_long disarmCommand = new msg_command_long();
+        disarmCommand.command = MAV_CMD.MAV_CMD_COMPONENT_ARM_DISARM;
+        disarmCommand.param1 = 0;  // Disarm
+        disarmCommand.target_system = 1;
+        disarmCommand.target_component = 1;
+        mavLinkStarter.sendMAVLinkCommand(disarmCommand);
+    
+        Log.d("FlightManager", "MAVLink mission aborted, drone landing...");
+        Toast.makeText(getContext(), "MAVLink mission aborted, landing drone.", Toast.LENGTH_SHORT).show();
     }
     
 
@@ -348,26 +418,79 @@ class FlightManager {
      * Implements the DJI function startGoHome.
      * Is called when test is complete
      */
-    public void goingHome(){
-        controller.startGoHome(djiError -> {
-            if (djiError == null){
-                Toast.makeText(getContext(), "Returning... :)", Toast.LENGTH_SHORT).show();
-            } else{
-                Toast.makeText(getContext(), djiError.getDescription(), Toast.LENGTH_SHORT).show();
-            }
-        });
+    public void goingHome() {
+        // Get the current drone mode (DJI or MAVLink)
+        String droneMode = getDroneMode();
+        Log.d("FlightManager", "Going Home - Mode: " + droneMode);
+    
+        if (droneMode.equals("MAVLink")) {
+            goHomeMAVLink(); // Use MAVLink Return-To-Launch command
+        } else {
+            controller.startGoHome(djiError -> {
+                if (djiError == null) {
+                    Toast.makeText(getContext(), "Returning to Home (DJI)...", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(), djiError.getDescription(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
+    private void goHomeMAVLink() {
+        Log.d("FlightManager", "Initiating MAVLink RTL");
+    
+        MAVLinkStarter mavLinkStarter = new MAVLinkStarter("192.168.1.2");  // Replace with actual IP
+    
+        // MAVLink Return to Home
+        msg_command_long rtlCommand = new msg_command_long();
+        rtlCommand.command = MAV_CMD.MAV_CMD_NAV_RETURN_TO_LAUNCH;
+        rtlCommand.target_system = 1;
+        rtlCommand.target_component = 1;
+        mavLinkStarter.sendMAVLinkCommand(rtlCommand);
+    
+        Log.d("FlightManager", "MAVLink RTL command sent.");
+        Toast.makeText(getContext(), "Returning to Launch (MAVLink)...", Toast.LENGTH_SHORT).show();
+    }
+    
+    
+
     @Deprecated
-    void setHomeLocationUsingAircraftCurrentLocation(){
+    void setHomeLocationUsingAircraftCurrentLocation() {    
+    // Get the current drone mode (DJI or MAVLink)
+    String droneMode = getDroneMode();
+    Log.d("FlightManager", "Setting Home Location - Mode: " + droneMode);
+
+    if (droneMode.equals("MAVLink")) {
+        setMAVLinkHomeLocation(); // MAVLink Home Location
+    } else {
+        // **DJI Set Home Location**
         controller.setHomeLocationUsingAircraftCurrentLocation(djiError -> {
-            if (djiError == null){
-                Toast.makeText(getCoordinatesActivity(), "Home set :)", Toast.LENGTH_SHORT).show();
-            } else{
+            if (djiError == null) {
+                Toast.makeText(getCoordinatesActivity(), "Home set (DJI) :)", Toast.LENGTH_SHORT).show();
+            } else {
                 Toast.makeText(getCoordinatesActivity(), djiError.getDescription(), Toast.LENGTH_SHORT).show();
             }
         });
     }
+    }
+
+    private void setMAVLinkHomeLocation() {
+        Log.d("FlightManager", "Setting MAVLink Home Location...");
+    
+        MAVLinkStarter mavLinkStarter = new MAVLinkStarter("192.168.1.2");  // Replace with actual drone IP
+    
+        msg_command_long homeCommand = new msg_command_long();
+        homeCommand.command = MAV_CMD.MAV_CMD_DO_SET_HOME;
+        homeCommand.param1 = 1;  // 1 = Use current position as home
+        homeCommand.target_system = 1;
+        homeCommand.target_component = 1;
+        mavLinkStarter.sendMAVLinkCommand(homeCommand);
+    
+        Log.d("FlightManager", "MAVLink Home Location Set.");
+        Toast.makeText(getContext(), "Home location set (MAVLink)!", Toast.LENGTH_SHORT).show();
+    }
+    
+
 
     /**
      * See the DJI documentation for the Google Maps Demo app.
