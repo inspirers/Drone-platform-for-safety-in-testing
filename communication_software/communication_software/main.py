@@ -1,3 +1,4 @@
+import os
 import communication_software.CoordinateHandler as CoordinateHandler
 from communication_software.Communication import Communication
 import asyncio
@@ -27,7 +28,8 @@ def main() -> None:
                 ATOScommunicator.publish_init()
                 time.sleep(5)
 
-                origo = ATOScommunicator.get_origin_coordinates()
+                # origo = ATOScommunicator.get_origin_coordinates()
+                origo = get_origo_coords(ATOScommunicator)
 
                     #Gets the trajectories for all of the objects
                 ids = ATOScommunicator.get_object_ids()
@@ -81,8 +83,17 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-
 def start_server(atos_communicator):
     server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
     server_thread.start()
     print("FastAPI server started in a separate thread!")
+
+def get_origo_coords(ATOScommunicator) -> CoordinateHandler.Coordinate: 
+    altitude = os.getenv("ENV_ALTITUDE")
+    latitude = os.getenv("ENV_LATITUDE")
+    longitude = os.getenv("ENV_LONGITUDE")
+    debug_mode = (os.getenv('DEBUG_MODE', 'False') == 'True')
+    if altitude and latitude and longitude and debug_mode:
+        print("Using custom coords")
+        return CoordinateHandler.Coordinate(lat=float(latitude),lng=float(longitude),alt=float(altitude))
+    return  ATOScommunicator.get_origin_coordinates()
