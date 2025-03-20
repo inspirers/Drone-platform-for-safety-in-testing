@@ -92,8 +92,23 @@ def get_origo_coords(ATOScommunicator) -> CoordinateHandler.Coordinate:
     altitude = os.getenv("ENV_ALTITUDE")
     latitude = os.getenv("ENV_LATITUDE")
     longitude = os.getenv("ENV_LONGITUDE")
-    debug_mode = (os.getenv('DEBUG_MODE', 'False') == 'True')
-    if altitude and latitude and longitude and debug_mode:
+    if altitude and latitude and longitude and is_debug_mode():
         print("Using custom coords")
         return CoordinateHandler.Coordinate(lat=float(latitude),lng=float(longitude),alt=float(altitude))
     return  ATOScommunicator.get_origin_coordinates()
+
+
+def is_debug_mode():
+    """
+    Retrieves the DEBUG_MODE environment variable and returns it as a boolean.
+    Handles various string representations of boolean values.
+    """
+    debug_mode_str = os.getenv("DEBUG_MODE", "false").lower() # default to "false" if not set
+
+    if debug_mode_str in ("true", "1", "t", "y", "yes"):
+        return True
+    elif debug_mode_str in ("false", "0", "f", "n", "no", ""):
+        return False
+    else:
+        print(f"Warning: Invalid DEBUG_MODE value: {debug_mode_str}.  Treating as false.")
+        return False
