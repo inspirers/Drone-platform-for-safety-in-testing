@@ -3,7 +3,7 @@ import cv2
 import math
 
 # load model
-model = YOLO('/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/best.pt') 
+model = YOLO('/home/viggof/Drone-platform-for-safety-in-testing/communication_software/communication_software/best.pt') 
 
 # instantiate list of object class names
 classNames = ["person", "car", "bicycle", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -19,7 +19,7 @@ classNames = ["person", "car", "bicycle", "motorbike", "aeroplane", "bus", "trai
               ]
 
 # open video file
-vid = cv2.VideoCapture('/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/Chalmers6.m4v')
+vid = cv2.VideoCapture('/home/viggof/Drone-platform-for-safety-in-testing/communication_software/communication_software/Chalmers6.m4v')
 
 while True:
     # get return value and frame

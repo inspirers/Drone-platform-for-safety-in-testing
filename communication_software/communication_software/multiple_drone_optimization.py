@@ -10,7 +10,7 @@ class Coordinate():
         self.lng = lng
         self.alt = alt
 
-def calculate_Height_Distance(area:int = 1500) -> int:
+def calculate_Height_Distance(area:int = 1500, d_decrease:float = 1.5, h_increase:float = 1.4) -> int:
     """Calculates the height that the drone need to fly at to cover a certain area 
     Args:
         area (int): Which currently is preset to 1500, unit: m^2
@@ -25,18 +25,22 @@ def calculate_Height_Distance(area:int = 1500) -> int:
     y = (16*x)/4 #Photosensor is 4:3 resolution
     radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
     height = radius / np.tan(theta) 
-    height = round(height) #no need for decimals
+    
+    height = round(height)*h_increase #no need for decimals
 
-    # distance
+    d = round((2*radius*np.cos(alpha))/d_decrease) 
 
-    d = 2*np.cos(alpha)*height*np.tan(theta/2)
+    total_overlap = 2*(radius)*np.cos(alpha)/d
+
+    if d < 2:
+        d = 2
 
     if height < 100: #swedish regulation limits the drone flying height to below 120 m
         return height, d
     else:
         print("The height exceeds swedish regulations")
         height = 99
-        return height, d
+        return height, d, total_overlap
 
 def getDronesLoc(coordslist, droneOrigin):
     """Returns the longitud, latitude, altitude and the angle the drone should rotate to for a 
@@ -81,7 +85,7 @@ def getDronesLoc(coordslist, droneOrigin):
     p3 = p_cart[2]
     p4 = p_cart[3]
 
-    #   Segment the area through iteration for two parts equal in area
+    # Segment the area through iteration for two parts equal in area
     # Define function for iterating to divide the area by two
 
     # Function for area by shoelace method
@@ -144,7 +148,7 @@ def getDronesLoc(coordslist, droneOrigin):
 
     # add area for margin
 
-    height, drone_distance = calculate_Height_Distance(area + area/5)
+    height, drone_distance, total_overlap = calculate_Height_Distance(area + area/5)
     
     x_dl24 = np.linspace(dp2[0], dp4[0], 10)
     def drone_line_2_4(x):
@@ -253,6 +257,4 @@ def getDronesLoc(coordslist, droneOrigin):
         angle2 = (angle2) * (180/np.pi)
     angle2 = round(angle2)
     
-    
-
-    return flyTo1, flyTo2, angle1, angle2
+    return flyTo1, flyTo2, angle1, angle2, total_overlap
