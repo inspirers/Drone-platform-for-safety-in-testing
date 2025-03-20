@@ -173,6 +173,8 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+*.mp4
+=======
 # Gradle files
 .gradle/
 build/
@@ -209,3 +211,4 @@ google-services.json
 
 .astazero
 .venv
+

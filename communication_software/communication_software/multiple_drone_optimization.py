@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 from communication_software.CoordinateHandler import Coordinate
 
+def calculate_Height_Distance(area:int = 1500, d_decrease:float = 1.5, h_increase:float = 1.4) -> int:
+    """Calculates the height that the drone need to fly at to cover a certain area 
 
-def calculate_Height_Distance(area: int = 1500) -> int:
-    """Calculates the height that the drone need to fly at to cover a certain area
     Args:
         area (int): Which currently is preset to 1500, unit: m^2
 
@@ -13,27 +13,30 @@ def calculate_Height_Distance(area: int = 1500) -> int:
             height (int): The height to fly at, unit: m
     """
 
-    # area = the FOV area to be covered in m^2
-    alpha = np.arctan(9 / 16)
-    theta = (82.6 / 2) * (
-        np.pi / 180
-    )  # chalmers drone has a lens of 82.6 degrees, convert to rad
-    x = np.sqrt(area / (16 * 9))  # FOV is 16:9 resolution
-    y = (16 * x) / 4  # Photosensor is 4:3 resolution
-    radius = np.sqrt((2 * y) ** 2 + (1.5 * y) ** 2)  # pythagoras theorem
-    height = radius / np.tan(theta)
-    height = round(height)  # no need for decimals
+    #area = the FOV area to be covered in m^2
+    alpha = np.arctan(9/16)
+    theta = (82.6/2)*(np.pi/180) #chalmers drone has a lens of 82.6 degrees, convert to rad
+    x = np.sqrt(area/(16*9)) #FOV is 16:9 resolution 
+    y = (16*x)/4 #Photosensor is 4:3 resolution
+    radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
+    height = radius / np.tan(theta) 
+    
+    height = round(height)*h_increase #no need for decimals
 
-    # distance
+    d = round((2*radius*np.cos(alpha))/d_decrease) 
 
-    d = 2 * np.cos(alpha) * height * np.tan(theta / 2)
+    total_overlap = 2*(radius)*np.cos(alpha)/d
+
+    if d < 2:
+        d = 2
+
     print("Drone distance: ", d, " m")
     if height < 100:  # swedish regulation limits the drone flying height to below 120 m
         return height, d
     else:
         print("The height exceeds swedish regulations")
         height = 99
-        return height, d
+        return height, d, total_overlap
 
 
 def getDronesLoc(coordslist, droneOrigin):
@@ -92,7 +95,7 @@ def getDronesLoc(coordslist, droneOrigin):
     p4 = p_cart[3]
     # print("p-cart values:", p_cart)
 
-    #   Segment the area through iteration for two parts equal in area
+    # Segment the area through iteration for two parts equal in area
     # Define function for iterating to divide the area by two
 
     # Function for area by shoelace method
@@ -183,8 +186,9 @@ def getDronesLoc(coordslist, droneOrigin):
 
     # add area for margin
     # print("Current area: ", area)
-    height, drone_distance = calculate_Height_Distance(area + area / 5)
 
+    height, drone_distance, total_overlap = calculate_Height_Distance(area + area/5)
+    
     x_dl24 = np.linspace(dp2[0], dp4[0], 10)
 
     def drone_line_2_4(x):
@@ -253,8 +257,8 @@ def getDronesLoc(coordslist, droneOrigin):
         x_origin, y_origin, drone_distance / 2
     )
 
-    # DEFINE DEFINE DRONE POSITIONS IN LATITUDE AND LONGITUDE
-
+    # DEFINE DRONE POSITIONS IN LATITUDE AND LONGITUDE
+    
     # Earth radius in meters
     earth_radius = 6371000
 
@@ -284,7 +288,7 @@ def getDronesLoc(coordslist, droneOrigin):
     flyTo1 = Coordinate(lat1, long1, height)
     flyTo2 = Coordinate(lat2, long2, height)
 
-    # BUILD ANGLE CALCULATION
+   # BUILD ANGLE CALCULATION
 
     # Calculate angle for drone 1
     x_travel1 = max_x[0] - min_x[0]
@@ -292,11 +296,11 @@ def getDronesLoc(coordslist, droneOrigin):
     if x_travel1 >= y_travel1:
         deltaY1 = np.abs(max_x[1] - min_x[1])
         angle1 = np.arctan2(deltaY1, x_travel1)
-        angle1 = (angle1 - np.pi / 2) * (180 / np.pi)
+        angle1 = (angle1 - np.pi/2) * (180/np.pi)
     else:
         deltaX1 = np.abs(max_y[0] - min_y[0])
         angle1 = np.arctan2(deltaX1, y_travel1)
-        angle1 = (angle1) * (180 / np.pi)
+        angle1 = (angle1) * (180/np.pi)
     angle1 = round(angle1)
 
     # Calculate angle for drone 2
@@ -305,11 +309,11 @@ def getDronesLoc(coordslist, droneOrigin):
     if x_travel2 >= y_travel2:
         deltaY2 = np.abs(max_x[1] - min_x[1])
         angle2 = np.arctan2(deltaY2, x_travel2)
-        angle2 = (angle2 - np.pi / 2) * (180 / np.pi)
+        angle2 = (angle2 - np.pi/2) * (180/np.pi)
     else:
         deltaX2 = np.abs(max_y[0] - min_y[0])
         angle2 = np.arctan2(deltaX2, y_travel2)
-        angle2 = (angle2) * (180 / np.pi)
+        angle2 = (angle2) * (180/np.pi)
     angle2 = round(angle2)
-
-    return flyTo1, flyTo2, angle1, angle2
+    
+    return flyTo1, flyTo2, angle1, angle2, total_overlap
