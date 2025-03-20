@@ -32,7 +32,7 @@ def calculate_Height_Distance(area:int = 1500, d_decrease:float = 1.5, h_increas
 
     print("Drone distance: ", d, " m")
     if height < 100:  # swedish regulation limits the drone flying height to below 120 m
-        return height, d
+        return height, d, total_overlap
     else:
         print("The height exceeds swedish regulations")
         height = 99

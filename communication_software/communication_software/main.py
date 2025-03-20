@@ -43,8 +43,8 @@ def main() -> None:
                     print("Coordinates could not be found")
                     continue
                 #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-                flyTo1, flyTo2, angle1, angle2 = getDronesLoc(trajectoryList,droneOrigin)
-                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}")
+                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList,droneOrigin)
+                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}, estimated overlap: {total_overlap}")
                 
                 droneOrigins = flyTo1,flyTo2
                 angles = angle1,angle2
