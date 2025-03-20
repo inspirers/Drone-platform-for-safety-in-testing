@@ -6,5 +6,56 @@ services:
     build: 
       context: .
       dockerfile: ./Dockerfile
-    image: inspirers/communication-software:latest
     command: bash -c "source /root/atos_ws/install/local_setup.bash ; ros2 run communication_software run_main"
+    networks:
+      - atos-net
+    ports:
+      - 8765:14500
+      - 14500:14500
+      - 8000:8000
+  atos:
+    image: astazero/atos_docker_env:latest
+    container_name: atos
+    networks:
+      - atos-net
+    ports:
+      - "80:80" 
+      - "8080:8080" 
+      - "8081:8081"
+      - "8082:8082"
+      - "3000:3000" 
+      - "3443:3443"
+      - "55555:55555"
+      - "443:443"
+      - "9090:9090" 
+    volumes: 
+      - .astazero/ATOS/:/root/.astazero/ATOS/
+    command: bash -c "source /root/atos_ws/install/setup.sh ; ros2 launch atos launch_basic.py insecure:=True"
+
+  isoObject:
+    image: astazero/iso_object_demo:latest
+    container_name: isoObject
+    networks:
+      - atos-net
+    deploy: # Add deploy section for resource limits
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
+  frontend:
+    image: nginx:latest
+    container_name: frontend
+    build: 
+      context: ../frontend
+      dockerfile: ../frontend/Dockerfile
+    networks:
+      - atos-net
+    ports:
+      - 8001:80
+
+networks:
+  atos-net:
+    driver: bridge

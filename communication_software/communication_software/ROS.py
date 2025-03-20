@@ -62,7 +62,7 @@ class AtosCommunication(Node):
         while not self.get_object_control_state_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn('ATOS is not running, waiting ...')
         self.get_logger().info('ATOS is running, waiting 10s to make sure that everything has started')
-        time.sleep(10)
+        # time.sleep(10)
 
     def __del__(self):
         """This does some cleanup when the instance is deleted
@@ -124,7 +124,7 @@ class AtosCommunication(Node):
     def publish_abort(self):
         """Method for publishing an abort message to ATOS
         """
-        self.init_pub.publish(Empty())
+        self.abort_pub.publish(Empty())
         self.get_logger().info('Publishing Abort signal')
 
     def get_test_origin_callback(self):
@@ -167,7 +167,7 @@ class AtosCommunication(Node):
             self.get_logger().warn('service not available, waiting again...')
 
         object_ids_req = GetObjectIds.Request()
-
+        print("Requested object ids received: ",object_ids_req)
         future = self.get_id_client.call_async(object_ids_req)
 
         # TODO: add timeout for the following line, could spin forever

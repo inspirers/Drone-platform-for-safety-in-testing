@@ -12,13 +12,13 @@ def print_menu() -> bool:
     Returns:
         bool: _description_
     """
-    print("------------------------------------------")
-    print("Enter q to exit, press enter to continue")
-    print("------------------------------------------")
-    if input("> ") == "q":
-        return False
-    else:
-        return True
+    # print("------------------------------------------")
+    # print("Enter q to exit, press enter to continue")
+    # print("------------------------------------------")
+    # if input("> ") == "q":
+    #     return False
+    # else:
+    return True
 
 def get_ip() -> str:
     """Makes the user enter what ip will be used for sending the coordinates.
@@ -27,11 +27,12 @@ def get_ip() -> str:
         str: a string containing the IP-adress
     """
     ip = "172.20.10.11"
+    ip = "0.0.0.0"
     
-    print("Enter the ip-adress of the wifi the phone is using (press enter for default: 172.20.10.11)")
-    ipInput = input("> ")
-    if len(ipInput) > 0:
-        ip = ipInput
+    # print("Enter the ip-adress of the wifi the phone is using (press enter for default: 172.20.10.11)")
+    # ipInput = input("> ")
+    # if len(ipInput) > 0:
+    #     ip = ipInput
 
     return ip
 
