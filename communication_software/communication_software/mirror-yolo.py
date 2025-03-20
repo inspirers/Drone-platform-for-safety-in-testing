@@ -6,8 +6,8 @@ import coordinateMapping
 from annotator import Annotator
 
 #stream_url = 'http://192.168.50.123:8080/screen_stream.mjpeg'
-stream_url = '/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/Chalmers6.m4v'
-model_filename = '/home/viggo_forsell/Drone-platform-for-safety-in-testing/communication_software/communication_software/best.pt'
+stream_url = '/home/viggof/Drone-platform-for-safety-in-testing/communication_software/communication_software/TEST1_R (1).mp4'
+model_filename = '/home/viggof/Drone-platform-for-safety-in-testing/communication_software/communication_software/yolov8n.pt'
 window_size = (1200, 650)
 
 # set to crop frames
@@ -25,16 +25,21 @@ resolution = (1250, 750)
 annotator = Annotator()
             
 def printID(detections):
-    # get detection coordinates and ids
     boxes = detections.xyxy
     track_ids = detections.tracker_id
 
-    # print location and id of each detection
-    for box, track_id in zip(boxes, track_ids):
-        x1, y1, x2, y2 = box
-        pos_x = (x2-x1)/2
-        pos_y = (y2-y1)/2
-        print(f'Object {track_id} at ({pos_x:>6.3f}, {pos_y:>6.3f})') 
+    if track_ids is not None:
+        for box, track_id in zip(boxes, track_ids):
+            x1, y1, x2, y2 = box
+            pos_x = (x2 - x1) / 2
+            pos_y = (y2 - y1) / 2
+            print(f'Object {track_id} at ({pos_x:>6.3f}, {pos_y:>6.3f})')
+    else:
+        for box in boxes:
+            x1, y1, x2, y2 = box
+            pos_x = (x2 - x1) / 2
+            pos_y = (y2 - y1) / 2
+            print(f'Object at ({pos_x:>6.3f}, {pos_y:>6.3f})')
 
 def cropFrame(frame):
     frame = frame[crop_y[0]:crop_y[1], crop_x[0]:crop_x[1]]
@@ -88,9 +93,9 @@ def main():
 
             # create detection labels
             labels = [
-                f"{tracker_id}: {model.model.names[class_id]} {confidence:0.2f}"
-                for class_id, confidence, tracker_id
-                in zip(detections.class_id, detections.confidence, detections.tracker_id)
+                f"tracker_id: {model.model.names[class_id]} {confidence:0.2f}"
+                for class_id, confidence # , tracker_id
+                in zip(detections.class_id, detections.confidence) #, detections.tracker_id)
             ]
 
             # create position labels
