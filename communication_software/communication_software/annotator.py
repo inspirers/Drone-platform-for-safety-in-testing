@@ -2,7 +2,7 @@ import supervision as sv
 
 class Annotator():
     def __init__(self) -> None:
-        self.boxAnnotator = sv.BoundingBoxAnnotator(thickness=5)
+        self.boxAnnotator = sv.BoxAnnotator(thickness=5)
         self.labelAnnotator = sv.LabelAnnotator(text_scale=1, 
                                                 text_position=sv.Position.TOP_LEFT)
         self.positionAnnotator = sv.LabelAnnotator(text_scale=0.5,
