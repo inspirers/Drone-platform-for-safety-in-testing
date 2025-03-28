@@ -14,9 +14,9 @@ services:
       - 14500:14500
       - 8000:8000
     environment:
-      - ENV_ALTITUDE=30 # does not matter probably
-      - ENV_LATITUDE=57.68893258570566
-      - ENV_LONGITUDE=11.980074404807423
+      - ENV_ALTITUDE= 15 # does not matter probably
+      - ENV_LATITUDE= 40.754655093024574
+      - ENV_LONGITUDE= -77.85342850593786
       - DEBUG_MODE=True
   atos:
     image: astazero/atos_docker_env:latest
