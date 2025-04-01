@@ -3,21 +3,6 @@ from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 from CoordinateHandler import Coordinate
 
-coordslist = {
-    "point_1": Coordinate(20.0, 20.0, 0),  # Centered reference point
-    "point_2": Coordinate(29.0, 24.4, 0),
-    "point_3": Coordinate(11.0, 17.6, 0),
-    "point_4": Coordinate(6.4, 21.0, 0),
-    "point_5": Coordinate(15.6, 33.4, 0),
-    "point_6": Coordinate(24.6, 6.6, 0),
-    "point_7": Coordinate(33.6, 19.8, 0),
-    "point_8": Coordinate(3.0, 10.4, 0),
-    "point_9": Coordinate(18.4, 36.8, 0),
-    "point_10": Coordinate(27.4, 12.2, 0),
-}
-
-
-
 def calculate_Height(area:int = 1500) -> int:
     """Calculates the height that the drone need to fly at to cover a certain area 
     Args:
@@ -213,5 +198,3 @@ def getDronesLoc(coordslist, droneOrigin):
     flyTo2 = Coordinate(lat2, long2, height)
 
     return flyTo1, flyTo2, angle
-
-print(getDronesLoc(coordslist, Coordinate(0,0,0)))
