@@ -17,7 +17,7 @@ def calculate_Height_Distance(area:int = 1500, d_decrease:float = 1.5, h_increas
     alpha = np.arctan(9/16)
     theta = (82.6/2)*(np.pi/180) #chalmers drone has a lens of 82.6 degrees, convert to rad
     x = np.sqrt(area/(16*9)) #FOV is 16:9 resolution 
-    y = (16*x)/4 #Photosensor is 4:3 resolution
+    y = (16*x)/4 # Photosensor is 4:3 resolution
     radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
     height = radius / np.tan(theta) 
     
@@ -32,7 +32,7 @@ def calculate_Height_Distance(area:int = 1500, d_decrease:float = 1.5, h_increas
 
     print("Drone distance: ", d, " m")
     if height < 100:  # swedish regulation limits the drone flying height to below 120 m
-        return height, d
+        return height, d, total_overlap
     else:
         print("The height exceeds swedish regulations")
         height = 99
