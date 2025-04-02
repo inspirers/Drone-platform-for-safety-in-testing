@@ -4,7 +4,7 @@ import asyncio
 import time
 import threading
 from communication_software.frontendWebsocket import run_server
-from communication_software.multiple_drone_optimization import getDronesLoc
+from communication_software.ConvexHull import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 
@@ -43,22 +43,18 @@ def main() -> None:
                     print("Coordinates could not be found")
                     continue
                 #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList,droneOrigin)
-                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}")
+                flyTo1, flyTo2, angle = getDronesLoc(trajectoryList,droneOrigin)
+                print(f"Drone 1 going to: {flyTo1}, \n angle: {angle}")
+                print(f"Drone 2 going to: {flyTo2}, \n angle: {angle}")
                 
                 droneOrigins = flyTo1,flyTo2
-                angles = angle1,angle2
-                
-                if len(droneOrigins) != len(angles):
-                    print("Mismatch in the number of drone origins and angles.")
-                    continue
                 
                 start_server(ATOScommunicator)
 
                 communication = Communication()
                 try:
                     print("Server starting, press ctrl + c to exit")
-                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)) 
+                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angle)) 
                 except KeyboardInterrupt:
                     print("The server was interrupted!")
                     continue

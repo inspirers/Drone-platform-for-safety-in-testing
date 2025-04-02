@@ -1,7 +1,20 @@
 import numpy as np
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
-from CoordinateHandler import Coordinate
+
+class Coordinate():
+    """Coordinate class that contains an altitude, longutude and altitude
+    """
+    def __init__(self,lat:float,lng:float,alt:float) -> None:
+        self.lat = lat
+        self.lng = lng
+        self.alt = alt
+    
+    def __str__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
+    
+    def __repr__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
 
 def calculate_Height(area:int = 1500) -> int:
     """Calculates the height that the drone need to fly at to cover a certain area 
@@ -28,9 +41,15 @@ def calculate_Height(area:int = 1500) -> int:
 
 def getDronesLoc(coordslist, droneOrigin):
 
-    coords = np.array([[items.lat, items.lng] for items in coordslist.values()])
+    coords = []
 
-    # ----
+    for coordList in coordslist.values():
+        for coord in coordList:
+            x = coord.lng
+            y = coord.lat
+            coords.append([x, y])
+    
+    coords = np.array(coords)
 
     class Rectangle:
         def __init__(self):
@@ -148,21 +167,23 @@ def getDronesLoc(coordslist, droneOrigin):
         square2_center + square_size * axis[0] + square_size * axis[1]
     ])
 
-    #Plot everything
-    plt.figure()
-    plt.scatter(coords[:, 0], coords[:, 1], label="Input Points", color="blue")
-    plt.scatter(center[0], center[1], label="Center", color="red")
-    plt.plot(rect_corners[:, 0], rect_corners[:, 1], label="Min Area Rectangle", color="black")
-    plt.plot(square1_corners[:, 0], square1_corners[:, 1], label="Square 1", color="green")
-    plt.plot(square2_corners[:, 0], square2_corners[:, 1], label="Square 2", color="purple")
-    plt.legend()
-    plt.show()
-
     drone_loc_x1 = square1_center[0]
     drone_loc_y1 = square1_center[1]
 
     drone_loc_x2 = square2_center[0]
     drone_loc_y2 = square2_center[1]
+
+    #Plot everything
+    plt.figure()
+    plt.scatter(coords[:, 0], coords[:, 1], label="Input Points", color="blue")
+    plt.scatter(center[0], center[1], label="Center", color="red")
+    plt.scatter(drone_loc_x1, drone_loc_y1, marker="x")
+    plt.scatter(drone_loc_x2, drone_loc_y2, marker="x")
+    plt.plot(rect_corners[:, 0], rect_corners[:, 1], label="Min Area Rectangle", color="black")
+    plt.plot(square1_corners[:, 0], square1_corners[:, 1], label="Square 1", color="green")
+    plt.plot(square2_corners[:, 0], square2_corners[:, 1], label="Square 2", color="purple")
+    plt.legend()
+    plt.show()
     
     # Earth radius in meters
     earth_radius = 6371000
