@@ -38,7 +38,6 @@ def calculate_Height(area:int = 1500) -> int:
         height = 99
         return height
 
-
 def getDronesLoc(coordslist, droneOrigin):
 
     coords = []
@@ -218,4 +217,4 @@ def getDronesLoc(coordslist, droneOrigin):
     flyTo1 = Coordinate(lat1, long1, height)
     flyTo2 = Coordinate(lat2, long2, height)
 
-    return flyTo1, flyTo2, angle
+    return flyTo1, flyTo2, round(angle)

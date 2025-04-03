@@ -48,13 +48,14 @@ def main() -> None:
                 print(f"Drone 2 going to: {flyTo2}, \n angle: {angle}")
                 
                 droneOrigins = flyTo1,flyTo2
+                angles = angle,angle
                 
                 start_server(ATOScommunicator)
 
                 communication = Communication()
                 try:
                     print("Server starting, press ctrl + c to exit")
-                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angle)) 
+                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)) 
                 except KeyboardInterrupt:
                     print("The server was interrupted!")
                     continue
@@ -73,10 +74,8 @@ def main() -> None:
         ATOScommunicator.destroy_node()
         rclpy.shutdown()
 
-
 if __name__ == "__main__":
     main()
-
 
 def start_server(atos_communicator):
     server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
