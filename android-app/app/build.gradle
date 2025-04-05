@@ -15,22 +15,15 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-
-    packagingOptions{
-        doNotStrip "*/*/libdjivideo.so"
-        doNotStrip "*/*/libSDKRelativeJNI.so"
-        doNotStrip "*/*/libFlyForbid.so"
-        doNotStrip "*/*/libduml_vision_bokeh.so"
-        doNotStrip "*/*/libyuv2.so"
-        doNotStrip "*/*/libGroudStation.so"
-        doNotStrip "*/*/libFRCorkscrew.so"
-        doNotStrip "*/*/libUpgradeVerify.so"
-        doNotStrip "*/*/libFR.so"
-        doNotStrip "*/*/libDJIFlySafeCore.so"
-        doNotStrip "*/*/libdjifs_jni.so"
-        doNotStrip "*/*/libsfjni.so"
-        exclude 'META-INF/rxjava.properties'
+    packagingOptions {
+        jniLibs {
+            keepDebugSymbols += ['*/*/libdjivideo.so', '*/*/libSDKRelativeJNI.so', '*/*/libFlyForbid.so', '*/*/libduml_vision_bokeh.so', '*/*/libyuv2.so', '*/*/libGroudStation.so', '*/*/libFRCorkscrew.so', '*/*/libUpgradeVerify.so', '*/*/libFR.so', '*/*/libDJIFlySafeCore.so', '*/*/libdjifs_jni.so', '*/*/libsfjni.so']
+        }
+        resources {
+            excludes += ['META-INF/rxjava.properties']
+        }
     }
+
 
     buildTypes {
         release {
