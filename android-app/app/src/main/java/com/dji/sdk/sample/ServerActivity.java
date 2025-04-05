@@ -54,7 +54,7 @@ public class ServerActivity extends AppCompatActivity {
         URI newUri;
 
         try {
-            newUri = new URI("ws://"+ipTextEdit.getText()+":"+portEdit.getText());
+            newUri = new URI(ipTextEdit.getText()+":"+portEdit.getText());
         } catch (URISyntaxException e) {
             Toast.makeText(this, "Incorrectly formatted URI", Toast.LENGTH_SHORT).show();
             return;

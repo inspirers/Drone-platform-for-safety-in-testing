@@ -17,7 +17,7 @@
     <string name="button">Fit view</string>
     <string name="not_streaming">Go live</string>
     <string name="streaming">Live!</string>
-    <string name="stream_url">rtmp://192.168.229.209:1935</string>
+    <string name="stream_url">rtmp://192.168.7.34:1935/live/livestream</string>
     <string name="error">"Error "</string>
     <string name="start">"Start</string>
     <string name="abort">Abort</string>

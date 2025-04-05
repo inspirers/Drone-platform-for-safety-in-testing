@@ -61,6 +61,18 @@ services:
     ports:
       - 8001:80
 
+  srs:
+    container_name: srs
+    stdin_open: true
+    tty: true
+    ports:
+        - 1935:1935
+        - 1985:1985
+        - 8083:8080
+        - 8002:8000/udp
+        - 10080:10080/udp
+    image: ossrs/srs:6
+
 networks:
   atos-net:
     driver: bridge
