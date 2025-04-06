@@ -24,6 +24,7 @@ import dji.thirdparty.afinal.core.AsyncTask;
 public class ServerActivity extends AppCompatActivity {
     private final String TAG = ServerActivity.class.getName();
     private WebsocketClientHandler websocketClientHandler;
+    private WebRTCSignalingHandler signalingHandler;
     EditText ipTextEdit;
     EditText portEdit;
 
@@ -79,7 +80,13 @@ public class ServerActivity extends AppCompatActivity {
             toastOnUIThread("Already connected!");
         }
     }
-
+    public void onWebSocketConnected() {
+        // Initialize the WebRTCSignalingHandler
+        signalingHandler = new WebRTCSignalingHandler(websocketClientHandler);
+        
+        // Start WebRTC signaling (it will create and send SDP offer)
+        signalingHandler.startWebRTCSignaling();
+    }
     /**
      * Sends a simple websocket message, for debugging.
      */
