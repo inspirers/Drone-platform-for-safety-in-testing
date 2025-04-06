@@ -25,6 +25,7 @@ class WSPosition implements Runnable {
         while (isRunning && webSocketClient != null ) {
             try {
                 // Get the FlightManager instance (since it's a singleton)
+                // TODO solve when flight manager is unavaiable causes error
                 FlightManager flightManager = FlightManager.getFlightManager();
 
                 if (flightManager != null) {
