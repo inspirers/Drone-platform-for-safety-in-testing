@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
 RUN pip install redis
+RUN pip install aiortc
 
 # --- Workspace Setup ---
 ENV WORKSPACE_DIR=/root/atos_ws
