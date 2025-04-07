@@ -4,9 +4,14 @@ import android.util.Log;
 
 import java.util.Locale;
 
+import dji.common.battery.BatteryState;
 import dji.common.flightcontroller.FlightControllerState;
 import dji.common.flightcontroller.LocationCoordinate3D;
 import dev.gustavoavila.websocketclient.WebSocketClient;
+import dji.sdk.base.BaseProduct;
+import dji.sdk.battery.Battery;
+import dji.sdk.products.HandHeld;
+import dji.sdk.sdkmanager.DJISDKManager;
 
 class WSPosition implements Runnable {
     private static final String TAG = WSPosition.class.getSimpleName();
@@ -27,6 +32,10 @@ class WSPosition implements Runnable {
                 // Get the FlightManager instance (since it's a singleton)
                 // TODO solve when flight manager is unavailable causes error
                 FlightManager flightManager = FlightManager.getFlightManager();
+                BaseProduct product = DJISDKManager.getInstance().getProduct();
+                Battery battery = product.getBattery();
+                
+                int batteryPercent = -1;
 
                 if (flightManager != null) {
                     // Get the current state
@@ -46,10 +55,19 @@ class WSPosition implements Runnable {
                             double longitude = location.getLongitude();
                             float altitude = location.getAltitude(); // You might want altitude too
 
+                            // Speed (NED frame: North, East, Down)
+                            float velocityX = currentState.getVelocityX(); // Speed towards North (m/s)
+                            float velocityY = currentState.getVelocityY(); // Speed towards East (m/s)
+                            float verticalSpeed = currentState.getVelocityZ();   // Speed downwards (m/s). Negative value means climbing.
+                            double horizontalSpeed = Double.NaN;
+                            // Calculate horizontal speed
+                            if (!Float.isNaN(velocityX) && !Float.isNaN(velocityY)) {
+                                horizontalSpeed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+                            }
                             // Format the data (e.g., as JSON)
                             String message = String.format(Locale.US,
-                                    "{\"msg_type\": Position,\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f}",
-                                    latitude, longitude, altitude);
+                                    "{\"msg_type\": Position,\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f}, \"speed\": %.2f}",
+                                    latitude, longitude, altitude, horizontalSpeed);
 
                             // Send the data via WebSocket
                             Log.d(TAG, "Sending position: " + message);
