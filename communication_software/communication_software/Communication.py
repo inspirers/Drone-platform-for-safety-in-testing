@@ -1,6 +1,17 @@
 import json
 import websockets
 from communication_software.CoordinateHandler import Coordinate
+import redis
+
+# redis = redis.Redis(host='redis', port=6379, decode_responses=True)
+
+try:
+    r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+    r.ping() # Check if the connection is successful
+    print("Successfully connected to Redis!")
+except redis.exceptions.ConnectionError as e:
+    print(f"Error connecting to Redis: {e}")
+    exit() # Exit if we can't connect
 
 class Communication:
     """Handles WebSocket communication with multiple clients, ensuring unique drone coordinate assignments."""
@@ -86,10 +97,7 @@ class Communication:
 
             # Optional: You could add elif blocks here to handle other msg_types
             elif isinstance(data, dict) and data.get("msg_type") == "Position":
-                lat = data.get("latitude")
-                long = data.get("longitude")
-                altitude = data.get("altitude")
-                print(f"Handling incoming position: lat: {long}, long: {lat}, altitude: {altitude}")
+                incoming_position_handler(data)
             elif isinstance(data, dict) and data.get("msg_type") == "Debug":
                 msg = data.get("msg")
                 print(f"Debug msg: {msg}")
@@ -133,4 +141,25 @@ class Communication:
                 self.cleanup_connection(connection_id)
         else:
             print(f"No coordinates found for {connection_id}")
+
+def incoming_position_handler(data):
+    lat = data.get("latitude")
+    long = data.get("longitude")
+    altitude = data.get("altitude")
+    print(f"Handling incoming position: lat: {long}, long: {lat}, altitude: {altitude}")
+    try:
+        json_data_string = json.dumps(data)
+    except TypeError as e:
+        print(f"Error serializing data to JSON: {e}")
+        return # Can't store if we can't serialize
+    
+    try:
+        # Use the established Redis connection 'r'
+        r.set("position_drone1", json_data_string)
+        r.set("position_drone2", json_data_string)
+        print(f"Stored position data for drone1 and drone2 in Redis.")
+    except redis.exceptions.RedisError as e:
+        print(f"Error setting data in Redis: {e}")
+    # redis.set("position_drone1",data)
+    # redis.set("position_drone2",data)
 

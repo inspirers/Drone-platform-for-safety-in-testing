@@ -1,13 +1,24 @@
 import asyncio
+import json
 import random
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 import uvicorn
 import cv2
 import numpy as np
-from datetime import datetime
+from datetime import datetime, time
 import os
+import redis
 
+# redis = redis.Redis(host='redis', port=6379, decode_responses=True)
+
+try:
+    r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+    r.ping() # Check if the connection is successful
+    print("Successfully connected to Redis!")
+except redis.exceptions.ConnectionError as e:
+    print(f"Error connecting to Redis: {e}")
+    exit() # Exit if we can't connect
 
 app = FastAPI()
 
@@ -61,42 +72,85 @@ async def generate_drone_frames(drone_id):
 @app.websocket("/api/v1/ws/drone")
 async def drone_websocket(websocket: WebSocket):
     await websocket.accept()
+    print("Drone client connected")
     try:
         while True:
-            try:
-                for drone_id in [1, 2]:
-                    atos.drone_data[drone_id].update(
-                        {
-                            "lat": atos.drone_data[drone_id]["lat"]
-                            + random.uniform(-0.0001, 0.0001),
-                            "lng": atos.drone_data[drone_id]["lng"]
-                            + random.uniform(-0.0001, 0.0001),
-                            "alt": 150 + random.randint(-5, 5),
-                            "speed": random.uniform(0, 15),
-                            "battery": max(
-                                0, atos.drone_data[drone_id]["battery"] - 0.1
-                            ),
-                        }
-                    )
+            processed_data_for_cycle = {} 
+            for drone_id in [1, 2]:
+                redis_key = f"position_drone{drone_id}"
+                json_data_string = None
+                try:
+                    json_data_string = r.get(redis_key)
 
-                    await websocket.send_json(
-                        {
-                            "drone_id": drone_id,
-                            **atos.drone_data[drone_id],
-                            "anomaly": atos.anomalies,
-                        }
-                    )
-                    await asyncio.sleep(0.5)
-            except WebSocketDisconnect:
-                print("Drone client disconnected")
-                break
+                    if json_data_string:
+                        try:
+                            data_dict = json.loads(json_data_string)
+                        except json.JSONDecodeError as e:
+                            print(f"Error decoding JSON for {redis_key}: {e}. Data: '{json_data_string}'")
+                            # Optionally use last known good data if available
+                            if drone_id in atos.drone_data:
+                                processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+                            continue # Skip update for this drone this cycle
 
-            except Exception as e:
-                print(f"Unexpected error in drone_websocket loop: {e}")
-                break
+                        # 3. Safely get values
+                        lat = data_dict.get("latitude")
+                        lng = data_dict.get("longitude")
+                        alt = data_dict.get("altitude")
+
+                        if lat is None or lng is None or alt is None:
+                            print(f"Warning: Missing position data fields in {redis_key}. Found: {data_dict}")
+                            if drone_id in atos.drone_data:
+                                processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+                            continue 
+
+                        if drone_id not in atos.drone_data:
+                            atos.drone_data[drone_id] = {"battery": 0} 
+                        elif "battery" not in atos.drone_data[drone_id]:
+                             atos.drone_data[drone_id]["battery"] = 0 
+
+                        atos.drone_data[drone_id].update(
+                            {
+                                "lat": lat,
+                                "lng": lng,
+                                "alt": alt,
+                                "speed": random.uniform(0, 15), # Calculate actual speed if available
+                                "battery": max(0, atos.drone_data[drone_id].get("battery", 0) - 0.1)
+                            }
+                        )
+                        processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+
+                    else:
+                        print(f"No data found in Redis for key: {redis_key}")
+                        if drone_id in atos.drone_data:
+                            processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+
+                except redis.exceptions.RedisError as e:
+                    print(f"Redis error while getting/processing {redis_key}: {e}")
+                    if drone_id in atos.drone_data:
+                       processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+                except Exception as e:
+                    print(f"An unexpected error occurred processing drone {drone_id}: {e}")
+                    if drone_id in atos.drone_data:
+                        processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
+
+                await websocket.send_json(
+                    {
+                        "drone_id": drone_id,
+                        **atos.drone_data[drone_id],
+                        "anomaly": atos.anomalies,
+                    }
+                )
+                # print(f"Sent data to client: {processed_data_for_cycle}") # Optional: Verbose logging
+
+            await asyncio.sleep(0.5) 
+
+    except WebSocketDisconnect:
+        print("Drone client disconnected")
     except Exception as e:
-        print(f"Unexpected error in drone_websocket: {e}")
-
+        print(f"Unexpected error in drone_websocket main loop: {e}")
+    finally:
+        print("Closing drone websocket connection.")
+        # FastAPI handles closing the connection, but you can add specific cleanup here if needed.
 
 @app.websocket("/api/v1/ws/atos")
 async def atos_websocket(websocket: WebSocket):
