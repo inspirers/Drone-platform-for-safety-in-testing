@@ -34,7 +34,7 @@ public class WebsocketClientHandler {
     public void sendIceCandidate(IceCandidate candidate) {
         try {
             JSONObject message = new JSONObject();
-            message.put("type", "candidate");
+            message.put("msg_type", "candidate");
             message.put("sdpMid", candidate.sdpMid);
             message.put("sdpMLineIndex", candidate.sdpMLineIndex);
             message.put("candidate", candidate.sdp);

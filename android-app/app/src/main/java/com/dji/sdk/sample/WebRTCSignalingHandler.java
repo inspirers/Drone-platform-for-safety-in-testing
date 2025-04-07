@@ -57,7 +57,7 @@ public class WebRTCSignalingHandler {
 
     public void processMessage(JSONObject message) {
         try {
-            String type = message.getString("type");
+            String type = message.getString("msg_type");
 
             if (type.equals("offer")) {
                 SessionDescription offer = new SessionDescription(SessionDescription.Type.OFFER, message.getString("sdp"));
@@ -163,9 +163,15 @@ public class WebRTCSignalingHandler {
 
     public void sendSDPOffer(String sdpOffer) {
         if (websocketClientHandler != null && websocketClientHandler.isConnected()) {
-            String iceMessage = "ICE/SDP " + sdpOffer;
-            websocketClientHandler.send(iceMessage);
-            Log.d(TAG, "Sent SDP offer.");
+            JSONObject message = new JSONObject();
+            try {
+                message.put("msg_type", "offer");
+                message.put("sdp", sdpOffer);
+                websocketClientHandler.send(message.toString());
+                Log.d(TAG, "Sent SDP offer.");
+            } catch (JSONException e) {
+                Log.e(TAG, "Failed to send SDP offer", e);
+}
         } else {
             Log.e(TAG, "No WebSocket connection.");
         }
