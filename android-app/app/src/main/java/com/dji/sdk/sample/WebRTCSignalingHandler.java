@@ -36,12 +36,10 @@ public class WebRTCSignalingHandler {
     private EglBase eglBase;
 
     private PeerConnectionFactory initializePeerConnectionFactory() {
-        // Initialize WebRTC globally
         PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(context)
                 .createInitializationOptions();
         PeerConnectionFactory.initialize(initializationOptions);
 
-        // Create the PeerConnectionFactory
         return PeerConnectionFactory.builder()
                 .setVideoEncoderFactory(new DefaultVideoEncoderFactory(eglBase.getEglBaseContext(), true, true))
                 .setVideoDecoderFactory(new DefaultVideoDecoderFactory(eglBase.getEglBaseContext()))
@@ -57,6 +55,52 @@ public class WebRTCSignalingHandler {
         initializePeerConnection();
     }
 
+    public void processMessage(JSONObject message) {
+        try {
+            String type = message.getString("type");
+
+            if (type.equals("offer")) {
+                SessionDescription offer = new SessionDescription(SessionDescription.Type.OFFER, message.getString("sdp"));
+                peerConnection.setRemoteDescription(new SdpObserver() {
+                    @Override public void onSetSuccess() {
+                        Log.d(TAG, "Remote offer set successfully.");
+                    }
+                    @Override public void onSetFailure(String error) {
+                        Log.e(TAG, "Failed to set remote offer: " + error);
+                    }
+                    @Override public void onCreateSuccess(SessionDescription sessionDescription) {}
+                    @Override public void onCreateFailure(String s) {}
+                }, offer);
+
+            } else if (type.equals("answer")) {
+                SessionDescription answer = new SessionDescription(SessionDescription.Type.ANSWER, message.getString("sdp"));
+                peerConnection.setRemoteDescription(new SdpObserver() {
+                    @Override public void onSetSuccess() {
+                        Log.d(TAG, "Remote answer set successfully.");
+                    }
+                    @Override public void onSetFailure(String error) {
+                        Log.e(TAG, "Failed to set remote answer: " + error);
+                    }
+                    @Override public void onCreateSuccess(SessionDescription sessionDescription) {}
+                    @Override public void onCreateFailure(String s) {}
+                }, answer);
+
+            } else if (type.equals("candidate")) {
+                IceCandidate candidate = new IceCandidate(
+                        message.getString("sdpMid"),
+                        message.getInt("sdpMLineIndex"),
+                        message.getString("candidate")
+                );
+                peerConnection.addIceCandidate(candidate);
+                Log.d(TAG, "ICE candidate added.");
+            } else {
+                Log.w(TAG, "Unhandled WebRTC message type: " + type);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to process WebRTC message: " + e.getMessage());
+        }
+    }
+
     public void startWebRTCSignaling(TextureView textureView) {
         if (websocketClientHandler != null && websocketClientHandler.isConnected()) {
             createVideoTrack(textureView);
@@ -70,28 +114,10 @@ public class WebRTCSignalingHandler {
         try {
             SurfaceTextureHelper textureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
 
-            djiVideoCapturer.initialize(textureHelper, context, new CapturerObserver() {
-                @Override
-                public void onFrameCaptured(VideoFrame videoFrame) {
-                    if (videoTrack != null) {
-                        videoTrack.addSink(frame -> Log.d(TAG, "Forwarding captured video frame."));
-                    }
-                }
-
-                @Override
-                public void onCapturerStarted(boolean success) {
-                    Log.d(TAG, "Video capturer started: " + success);
-                }
-
-                @Override
-                public void onCapturerStopped() {
-                    Log.d(TAG, "Video capturer stopped.");
-                }
-            });
-
+            VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+            djiVideoCapturer.initialize(textureHelper, context, videoSource.getCapturerObserver());
             djiVideoCapturer.startCapture(640, 480, 30);
 
-            VideoSource videoSource = peerConnectionFactory.createVideoSource(djiVideoCapturer.isScreencast());
             videoTrack = peerConnectionFactory.createVideoTrack("videoTrack", videoSource);
 
             MediaStream mediaStream = peerConnectionFactory.createLocalMediaStream("localStream");
@@ -110,19 +136,25 @@ public class WebRTCSignalingHandler {
             peerConnection.createOffer(new SdpObserver() {
                 @Override
                 public void onCreateSuccess(SessionDescription desc) {
-                    sendSDPOffer(desc.description);
+                    peerConnection.setLocalDescription(new SdpObserver() {
+                        @Override public void onSetSuccess() {
+                            sendSDPOffer(desc.description);
+                        }
+                        @Override public void onSetFailure(String error) {
+                            Log.e(TAG, "Failed to set local SDP: " + error);
+                        }
+                        @Override public void onCreateSuccess(SessionDescription sessionDescription) {}
+                        @Override public void onCreateFailure(String s) {}
+                    }, desc);
                 }
 
-                @Override
-                public void onSetSuccess() {}
+                @Override public void onSetSuccess() {}
 
-                @Override
-                public void onCreateFailure(String s) {
+                @Override public void onCreateFailure(String s) {
                     Log.e(TAG, "Failed to create SDP offer: " + s);
                 }
 
-                @Override
-                public void onSetFailure(String s) {}
+                @Override public void onSetFailure(String s) {}
             }, mediaConstraints);
         } catch (Exception e) {
             Log.e(TAG, "Failed to create SDP offer", e);
@@ -148,59 +180,40 @@ public class WebRTCSignalingHandler {
 
     private void initializePeerConnection() {
         PeerConnection.Observer observer = new PeerConnection.Observer() {
-            @Override
-            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
+            @Override public void onSignalingChange(PeerConnection.SignalingState signalingState) {
                 Log.d(TAG, "Signaling state changed: " + signalingState);
             }
-
-            @Override
-            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+            @Override public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
                 Log.d(TAG, "ICE connection state changed: " + iceConnectionState);
             }
-
-            @Override
-            public void onDataChannel(DataChannel dataChannel) {
+            @Override public void onDataChannel(DataChannel dataChannel) {
                 Log.d(TAG, "Data channel is not used.");
             }
-
-            @Override
-            public void onIceConnectionReceivingChange(boolean receiving) {
+            @Override public void onIceConnectionReceivingChange(boolean receiving) {
                 Log.d(TAG, "ICE connection receiving change: " + receiving);
             }
-
-            @Override
-            public void onIceCandidate(IceCandidate candidate) {
+            @Override public void onIceCandidate(IceCandidate candidate) {
                 Log.d(TAG, "New ICE candidate: " + candidate.sdp);
                 websocketClientHandler.sendIceCandidate(candidate);
             }
-
-            @Override
-            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
+            @Override public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
                 Log.d(TAG, "ICE gathering state changed: " + iceGatheringState);
             }
-
-            @Override
-            public void onAddStream(MediaStream mediaStream) {
+            @Override public void onAddStream(MediaStream mediaStream) {
                 Log.d(TAG, "New media stream added.");
             }
-
-            @Override
-            public void onRemoveStream(MediaStream mediaStream) {
+            @Override public void onRemoveStream(MediaStream mediaStream) {
                 Log.d(TAG, "Media stream removed.");
             }
-
-            @Override
-            public void onIceCandidatesRemoved(IceCandidate[] candidates) {
+            @Override public void onIceCandidatesRemoved(IceCandidate[] candidates) {
                 Log.d(TAG, "ICE candidates removed.");
             }
-
-            @Override
-            public void onRenegotiationNeeded() {
+            @Override public void onRenegotiationNeeded() {
                 Log.d(TAG, "Renegotiation needed.");
             }
         };
 
-        // Initialize PeerConnection with no ICE servers for local network
+        // No ICE servers for local peer connection
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, observer);
     }

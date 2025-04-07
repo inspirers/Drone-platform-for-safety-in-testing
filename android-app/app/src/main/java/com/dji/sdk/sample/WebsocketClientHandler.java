@@ -13,6 +13,7 @@ import dev.gustavoavila.websocketclient.WebSocketClient;
 public class WebsocketClientHandler {
     private static WebsocketClientHandler clientHandler = null;
     private URI uri = null;
+    private WebRTCSignalingHandler signalingHandler;
     private final WebSocketClient webSocketClient;
     public static final String TAG = WebsocketClientHandler.class.getName();
     private boolean connected = false;
@@ -59,11 +60,27 @@ public class WebsocketClientHandler {
                 WebsocketClientHandler.status_update.release();
             }
 
+
+
             @Override
             public void onTextReceived(String message) {
-                Log.d(TAG, "Received: " + message);
-                lastStringReceived = message;
-                new_string.release();
+                try {
+                    JSONObject jsonMessage = new JSONObject(message);
+                    String type = jsonMessage.getString("msg_type");
+
+                    if (type.equals("coordinateResponse")) {
+                        Log.d(TAG, "Received: " + message);
+                        lastStringReceived = message;
+                        new_string.release();
+                    } else if (type.equals("offer") || type.equals("answer") || type.equals("candidate")) {
+                        // Forward WebRTC signaling messages to WebRTCSignalingHandler
+                        signalingHandler.processMessage(jsonMessage);
+                    } else {
+                        Log.w(TAG, "Unhandled message type: " + type);
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Failed to parse message: " + e.getMessage());
+                }
             }
 
             @Override
