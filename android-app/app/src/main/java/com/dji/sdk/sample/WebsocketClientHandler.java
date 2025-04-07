@@ -78,7 +78,7 @@ public class WebsocketClientHandler {
                     JSONObject jsonMessage = new JSONObject(message);
                     String type = jsonMessage.getString("msg_type");
 
-                    if (type.equals("coordinateResponse")) {
+                    if (type.equals("Coordinate_request")) {
                         Log.d(TAG, "Received: " + message);
                         lastStringReceived = message;
                         new_string.release();
