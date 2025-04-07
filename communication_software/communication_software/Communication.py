@@ -38,6 +38,7 @@ class Communication:
 
     def transform_coordinates(self, coordinates: Coordinate, angle: int) -> tuple:
         """Transforms coordinates into the required string format"""
+
         lat = str(coordinates.lat)[0:9] 
         lng = str(coordinates.lng)[0:9]  
         alt = str(coordinates.alt)[0:2]  
@@ -81,6 +82,11 @@ class Communication:
         self.coordinates.pop(connection_id, None)
         print(f"Connection {connection_id} removed.")
 
+    async def send_to_client(self, connection_id: str, message: dict):
+        frame = json.dumps(message)
+        # Your actual send logic here
+        await self.connections[connection_id].send(frame)
+
     async def on_message(self, frame: str, connection_id: str) -> None:
         """Handles received messages."""
         print(f"Received from {connection_id}: {frame}")
@@ -101,12 +107,38 @@ class Communication:
             elif isinstance(data, dict) and data.get("msg_type") == "Debug":
                 msg = data.get("msg")
                 print(f"Debug msg: {msg}")
-            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Candidate":
-                print("Run some candidate func")
-            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Offer":
-                print("Run some offer func")
-            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Answer":
-                print("Run some answer func")
+
+            elif isinstance(data, dict) and data.get("msg_type") == "candidate": # WebRTC
+                    print("Received ICE candidate from", connection_id) # ett connection id för varje telefon
+                    target_id = data.get("candidate") # id för datorn
+                    await self.send_to_client(target_id, {
+                        "msg_type": "candidate",
+                        "candidate": data["candidate"],
+                        "sdpMid": data["sdpMid"],
+                        "sdpMLineIndex": data["sdpMLineIndex"],
+                        "from_id": connection_id
+                })
+
+            elif isinstance(data, dict) and data.get("msg_type") == "offer": # WebRTC
+                print("Received SDP Offer from", connection_id)
+                target_id = data.get("offer")  # You need to know who to forward this to
+                await self.send_to_client(target_id, {
+                    "msg_type": "offer",
+                    "sdp": data["sdp"],
+                    "type": data["type"],
+                    "from_id": connection_id
+                })
+
+            elif isinstance(data, dict) and data.get("msg_type") == "answer": # WebRTC
+                print("Received SDP Answer from", connection_id)
+                target_id = data.get("candidate")
+                await self.send_to_client(target_id, {
+                    "msg_type": "answer",
+                    "sdp": data["sdp"],
+                    "type": data["type"],
+                    "from_id": connection_id
+                })
+
             else:
                 # It was valid JSON, but not the type we explicitly handle here
                 if isinstance(data, dict):
@@ -127,6 +159,7 @@ class Communication:
             lat, lng, alt, angle = self.coordinates[connection_id]
 
             message = json.dumps({
+                "msg_type": "Coordinate_request",
                 "lat": lat,
                 "lng": lng,
                 "alt": alt,
