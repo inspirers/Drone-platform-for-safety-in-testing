@@ -22,6 +22,15 @@ public class WebsocketClientHandler {
     public static Semaphore new_string = new Semaphore(0);
     public static Semaphore status_update = new Semaphore(0);
 
+    private WSPosition wsPositionRunnable;
+    private Thread wsPositionThread;
+
+    /**
+     * Get the active instance of the WebsocketClientHandler.
+     * @return Returns null if the client hasn't been created, returns
+     * the WebsocketClientHandler if it has been instantiated
+     */
+
     @Nullable
     public static WebsocketClientHandler getInstance(){
         return clientHandler;
@@ -57,6 +66,7 @@ public class WebsocketClientHandler {
             public void onOpen() {
                 Log.d(TAG, "New connection opened on URI " + getUri());
                 connected = true;
+                startPositionSending();
                 WebsocketClientHandler.status_update.release();
             }
 
@@ -111,6 +121,7 @@ public class WebsocketClientHandler {
             public void onCloseReceived(int reason, String description) {
                 Log.d(TAG, String.format("Closed with code %d, %s", reason, description));
                 connected = false;
+                stopPositionSending();
                 WebsocketClientHandler.status_update.release();
             }
         };
@@ -174,8 +185,45 @@ public class WebsocketClientHandler {
         }
         if (webSocketClient != null){
             webSocketClient.connect();
+            WSPosition WSPosition = new WSPosition(webSocketClient);
+            Thread thread = new Thread(WSPosition);
+            thread.start();
             return true;
         }
         return false;
     }
+
+    private synchronized void startPositionSending() {
+        if (wsPositionThread == null || !wsPositionThread.isAlive()) {
+            Log.i(TAG, "Starting position sending thread...");
+            wsPositionRunnable = new WSPosition(this.webSocketClient); // Pass the client
+            wsPositionThread = new Thread(wsPositionRunnable, "WebSocketPositionSender");
+            wsPositionThread.start();
+        } else {
+            Log.w(TAG, "Position sending thread already running.");
+        }
+    }
+
+    private synchronized void stopPositionSending() {
+        if (wsPositionRunnable != null) {
+            Log.i(TAG, "Requesting position sending thread to stop...");
+            wsPositionRunnable.stopRunning(); // Signal the runnable to stop
+        }
+        if (wsPositionThread != null && wsPositionThread.isAlive()) {
+            Log.i(TAG, "Interrupting position sending thread...");
+            wsPositionThread.interrupt(); // Interrupt sleep/wait
+            try {
+                // Optionally wait a short time for the thread to finish cleanly
+                 wsPositionThread.join(500); // Wait max 500ms
+                 Log.i(TAG, "Position sending thread joined.");
+            } catch (InterruptedException e) {
+                Log.w(TAG, "Interrupted while joining position sending thread.");
+                Thread.currentThread().interrupt();
+            }
+        }
+        wsPositionRunnable = null; // Clear references
+        wsPositionThread = null;
+         Log.i(TAG, "Position sending stopped.");
+    }
 }
+

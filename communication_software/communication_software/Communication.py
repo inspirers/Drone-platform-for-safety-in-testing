@@ -1,6 +1,17 @@
 import json
 import websockets
 from communication_software.CoordinateHandler import Coordinate
+import redis
+
+# redis = redis.Redis(host='redis', port=6379, decode_responses=True)
+
+try:
+    r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+    r.ping() # Check if the connection is successful
+    print("Successfully connected to Redis!")
+except redis.exceptions.ConnectionError as e:
+    print(f"Error connecting to Redis: {e}")
+    exit() # Exit if we can't connect
 
 class Communication:
     """Handles WebSocket communication with multiple clients, ensuring unique drone coordinate assignments."""
@@ -74,10 +85,41 @@ class Communication:
         """Handles received messages."""
         print(f"Received from {connection_id}: {frame}")
         
-        if frame.startswith("REQ/COORDS"):
-            await self.send_coords(connection_id)  # Send coordinates to requesting client
-        else:
-            print(f"Unknown command from {connection_id}: {frame}")
+        try:
+            data = json.loads(frame)
+
+            # Check 1: Is the parsed data a dictionary?
+            # Check 2: Does it have the key 'msg_type'? (Using .get is safer than direct access)
+            # Check 3: Is the value of 'msg_type' equal to 'Coordinate_request'?
+            if isinstance(data, dict) and data.get("msg_type") == "Coordinate_request":
+                print(f"Processing JSON Coordinate_request from {connection_id}")
+                await self.send_coords(connection_id)  # Send coordinates to requesting client
+
+            # Optional: You could add elif blocks here to handle other msg_types
+            elif isinstance(data, dict) and data.get("msg_type") == "Position":
+                incoming_position_handler(data)
+            elif isinstance(data, dict) and data.get("msg_type") == "Debug":
+                msg = data.get("msg")
+                print(f"Debug msg: {msg}")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Candidate":
+                print("Run some candidate func")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Offer":
+                print("Run some offer func")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Answer":
+                print("Run some answer func")
+            else:
+                # It was valid JSON, but not the type we explicitly handle here
+                if isinstance(data, dict):
+                    print(f"Received known JSON structure but unhandled msg_type: {data.get('msg_type')}")
+                else:
+                    print(f"Received valid JSON, but it's not a dictionary: {type(data)}")
+
+        except json.JSONDecodeError:
+            # The frame was not valid JSON, it might be the old format or something else
+            print(f"Received non-JSON message or malformed JSON from {connection_id}. Text data: {frame}")
+        except Exception as e:
+            # Catch any other unexpected errors during processing
+            print(f"An unexpected error occurred processing message from {connection_id}: {e}")
 
     async def send_coords(self, connection_id: str) -> None:
         """Sends assigned coordinates for a specific connection."""
@@ -99,3 +141,23 @@ class Communication:
                 self.cleanup_connection(connection_id)
         else:
             print(f"No coordinates found for {connection_id}")
+
+def incoming_position_handler(data):
+    lat = data.get("latitude")
+    long = data.get("longitude")
+    altitude = data.get("altitude")
+    print(f"Handling incoming position: lat: {long}, long: {lat}, altitude: {altitude}")
+    try:
+        json_data_string = json.dumps(data)
+    except TypeError as e:
+        print(f"Error serializing data to JSON: {e}")
+        return # Can't store if we can't serialize
+    
+    try:
+        # Use the established Redis connection 'r'
+        r.set("position_drone1", json_data_string)
+        r.set("position_drone2", json_data_string)
+        print(f"Stored position data for drone1 and drone2 in Redis.")
+    except redis.exceptions.RedisError as e:
+        print(f"Error setting data in Redis: {e}")
+
