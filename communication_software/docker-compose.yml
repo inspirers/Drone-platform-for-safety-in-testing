@@ -81,12 +81,6 @@ services:
       - '6379:6379'
     networks:
       - atos-net
-    # volumes: 
-    #   - cache:/data
-
-# volumes:
-#   cache:
-#     driver: local
 
 networks:
   atos-net:

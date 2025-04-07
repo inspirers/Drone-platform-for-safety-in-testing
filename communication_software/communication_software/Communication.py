@@ -160,6 +160,4 @@ def incoming_position_handler(data):
         print(f"Stored position data for drone1 and drone2 in Redis.")
     except redis.exceptions.RedisError as e:
         print(f"Error setting data in Redis: {e}")
-    # redis.set("position_drone1",data)
-    # redis.set("position_drone2",data)
 
