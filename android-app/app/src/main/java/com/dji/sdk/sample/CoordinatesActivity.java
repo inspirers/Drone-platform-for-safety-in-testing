@@ -144,8 +144,8 @@ public class CoordinatesActivity extends AppCompatActivity {
      * for that
      */
     public void loadCoordsFromServer(View v) {
-
-        if (WebsocketClientHandler.isInstanceCreated() && websocketClientHandler.send("REQ/COORDS")) {
+        String message ="{\"msg_type\": \"Coordinate_request\"}";
+        if (WebsocketClientHandler.isInstanceCreated() && websocketClientHandler.send(message)) {
             AsyncTask.execute(getAndApplyCoordinateRunnable);
 
         } else {

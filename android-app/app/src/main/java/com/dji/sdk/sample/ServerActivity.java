@@ -16,6 +16,7 @@ import org.w3c.dom.Text;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Locale;
 
 import dev.gustavoavila.websocketclient.WebSocketClient;
 import dji.thirdparty.afinal.core.AsyncTask;
@@ -85,7 +86,8 @@ public class ServerActivity extends AppCompatActivity {
      */
     public void sendClick(View v) {
         Log.e(TAG, "send clicked!");
-        websocketClientHandler.send("Hello, from Android!");
+        String message = "{\"msg_type\": \"Debug\",\"msg\": \"Hello, from Android!\"}";
+        websocketClientHandler.send(message);
     }
 
     /**

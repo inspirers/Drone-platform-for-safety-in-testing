@@ -25,7 +25,7 @@ class WSPosition implements Runnable {
         while (isRunning && webSocketClient != null ) {
             try {
                 // Get the FlightManager instance (since it's a singleton)
-                // TODO solve when flight manager is unavaiable causes error
+                // TODO solve when flight manager is unavailable causes error
                 FlightManager flightManager = FlightManager.getFlightManager();
 
                 if (flightManager != null) {
@@ -48,7 +48,7 @@ class WSPosition implements Runnable {
 
                             // Format the data (e.g., as JSON)
                             String message = String.format(Locale.US,
-                                    "{\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f}",
+                                    "{\"msg_type\": Position,\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f}",
                                     latitude, longitude, altitude);
 
                             // Send the data via WebSocket
