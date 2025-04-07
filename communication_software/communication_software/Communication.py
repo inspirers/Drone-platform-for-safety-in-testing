@@ -93,6 +93,12 @@ class Communication:
             elif isinstance(data, dict) and data.get("msg_type") == "Debug":
                 msg = data.get("msg")
                 print(f"Debug msg: {msg}")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Candidate":
+                print("Run some candidate func")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Offer":
+                print("Run some offer func")
+            elif isinstance(data, dict) and data.get("msg_type") == "WEBRTC_Answer":
+                print("Run some answer func")
             else:
                 # It was valid JSON, but not the type we explicitly handle here
                 if isinstance(data, dict):
