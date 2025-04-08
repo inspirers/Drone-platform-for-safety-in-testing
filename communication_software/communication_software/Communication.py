@@ -197,8 +197,7 @@ def incoming_position_handler(data, connection_id):
     print(f"Handling position: lat={lat}, long={long}, altitude={altitude}")
     try:
         json_data_string = json.dumps(data)
-        r.set(f"position_drone{connection_id}", json_data_string,ex=10)
-        # r.set("position_drone2", json_data_string)
-        print("Stored position data in Redis.")
+        r.set(f"position_drone{connection_id}", json_data_string, ex=10)
+        # print("Stored position data in Redis.")
     except (TypeError, redis.exceptions.RedisError) as e:
         print(f"Error processing position data: {e}")
