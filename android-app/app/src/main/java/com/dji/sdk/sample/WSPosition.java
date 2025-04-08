@@ -66,7 +66,7 @@ class WSPosition implements Runnable {
                             }
                             // Format the data (e.g., as JSON)
                             String message = String.format(Locale.US,
-                                    "{\"msg_type\": Position,\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f}, \"speed\": %.2f}",
+                                    "{\"msg_type\": \"Position\",\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f, \"speed\": %.2f}",
                                     latitude, longitude, altitude, horizontalSpeed);
 
                             // Send the data via WebSocket
