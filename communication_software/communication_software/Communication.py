@@ -81,7 +81,7 @@ class Communication:
             if msg_type == "Coordinate_request":
                 await self.send_coords(connection_id)
             elif msg_type == "Position":
-                incoming_position_handler(data)
+                incoming_position_handler(data, connection_id)
             elif msg_type == "Debug":
                 msg = data.get("msg", "")
                 print(f"Debug message: {msg}")
