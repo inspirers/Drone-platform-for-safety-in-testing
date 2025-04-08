@@ -27,7 +27,7 @@ class WSPosition implements Runnable {
     public void run() {
         Log.i(TAG, "WSPosition thread started.");
         // TODO Check that it is connected
-        while (false && isRunning && webSocketClient != null ) {
+        while (true && isRunning && webSocketClient != null ) {
             try {
                 // Get the FlightManager instance (since it's a singleton)
                 // TODO solve when flight manager is unavailable causes error

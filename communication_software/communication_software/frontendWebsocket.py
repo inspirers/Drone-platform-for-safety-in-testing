@@ -76,8 +76,10 @@ async def drone_websocket(websocket: WebSocket):
     try:
         while True:
             processed_data_for_cycle = {} 
-            for drone_id in [1, 2]:
-                redis_key = f"position_drone{drone_id}"
+            # for drone_id in [1, 2]:
+            drone_id=0
+            for redis_key in r.scan_iter(match="position_drone*"):
+                drone_id+=1
                 json_data_string = None
                 try:
                     json_data_string = r.get(redis_key)
@@ -141,7 +143,6 @@ async def drone_websocket(websocket: WebSocket):
                     }
                 )
                 # print(f"Sent data to client: {processed_data_for_cycle}") # Optional: Verbose logging
-
             await asyncio.sleep(0.5) 
 
     except WebSocketDisconnect:
