@@ -59,7 +59,7 @@ class Communication:
                         print("[REDIS THREAD] Stop event detected, exiting listen loop.")
                         break
                     # message['data'] will be decoded string if decode_responses=True
-                    self.process_redis_command(self, message['data'])
+                    self.process_redis_command(message['data'])
 
                 # If loop exits normally (e.g., stop_event set), break outer loop too
                 break
@@ -160,9 +160,9 @@ class Communication:
         """Processes command messages received from the Redis channel."""
         # 'instance' would be 'self' from the class if passed, allowing
         # interaction with the main object if needed (using thread-safe methods)
-        print(f"\n[REDIS SUB] Raw Command Data Received: {message_data}")
+        print(f"\n[REDIS SUB] Raw Command Data Received (type: {type(message_data)}): {message_data}")
         try:
-            data = json.loads(message_data)
+            data = json.loads(str(message_data))
 
             target_drone_id = data.get("target_drone_id")
             command = data.get("command")
