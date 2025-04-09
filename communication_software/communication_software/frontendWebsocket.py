@@ -6,11 +6,8 @@ from fastapi.responses import StreamingResponse
 import uvicorn
 import cv2
 import numpy as np
-from datetime import datetime, time
-import os
+from datetime import datetime
 import redis
-
-# redis = redis.Redis(host='redis', port=6379, decode_responses=True)
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
@@ -76,7 +73,6 @@ async def drone_websocket(websocket: WebSocket):
     try:
         while True:
             processed_data_for_cycle = {} 
-            # for drone_id in [1, 2]:
             drone_id=0
             redis_key_list = r.scan_iter(match="position_drone*")
             print(f"redis keys: {redis_key_list}")
@@ -101,9 +97,10 @@ async def drone_websocket(websocket: WebSocket):
                         lng = data_dict.get("longitude")
                         alt = data_dict.get("altitude")
                         speed = data_dict.get("speed")
+                        batteryPercent = data_dict.get("batteryPercent")
 
-                        if lat is None or lng is None or alt is None or speed is None:
-                            print(f"Warning: Missing position or speed data fields in {redis_key}. Found: {data_dict}")
+                        if lat is None or lng is None or alt is None or speed is None or batteryPercent is None:
+                            print(f"Warning: Missing position, battery or speed data fields in {redis_key}. Found: {data_dict}")
                             if drone_id in atos.drone_data:
                                 processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
                             continue 
@@ -119,7 +116,7 @@ async def drone_websocket(websocket: WebSocket):
                                 "lng": lng,
                                 "alt": alt,
                                 "speed": speed,
-                                "battery": max(0, atos.drone_data[drone_id].get("battery", 0) - 0.1)
+                                "battery": batteryPercent 
                             }
                         )
                         processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]

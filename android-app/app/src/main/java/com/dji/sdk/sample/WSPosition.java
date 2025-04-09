@@ -10,6 +10,7 @@ import dji.common.flightcontroller.LocationCoordinate3D;
 import dev.gustavoavila.websocketclient.WebSocketClient;
 import dji.sdk.base.BaseProduct;
 import dji.sdk.battery.Battery;
+import dji.common.battery.BatteryState;
 import dji.sdk.products.HandHeld;
 import dji.sdk.sdkmanager.DJISDKManager;
 
@@ -27,14 +28,13 @@ class WSPosition implements Runnable {
     public void run() {
         Log.i(TAG, "WSPosition thread started.");
         // TODO Check that it is connected
-        while (true && isRunning && webSocketClient != null ) {
+        while (isRunning && webSocketClient != null ) {
             try {
                 // Get the FlightManager instance (since it's a singleton)
                 // TODO solve when flight manager is unavailable causes error
                 FlightManager flightManager = FlightManager.getFlightManager();
                 BaseProduct product = DJISDKManager.getInstance().getProduct();
-                Battery battery = product.getBattery();
-                
+                BatteryState batteryState = flightManager.getBatteryState();
                 int batteryPercent = -1;
 
                 if (flightManager != null) {
@@ -54,7 +54,7 @@ class WSPosition implements Runnable {
                             double latitude = location.getLatitude();
                             double longitude = location.getLongitude();
                             float altitude = location.getAltitude(); // You might want altitude too
-
+                            batteryPercent = batteryState.getChargeRemainingInPercent();
                             // Speed (NED frame: North, East, Down)
                             float velocityX = currentState.getVelocityX(); // Speed towards North (m/s)
                             float velocityY = currentState.getVelocityY(); // Speed towards East (m/s)
@@ -66,8 +66,8 @@ class WSPosition implements Runnable {
                             }
                             // Format the data (e.g., as JSON)
                             String message = String.format(Locale.US,
-                                    "{\"msg_type\": \"Position\",\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f, \"speed\": %.2f}",
-                                    latitude, longitude, altitude, horizontalSpeed);
+                                    "{\"msg_type\": \"Position\",\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f, \"speed\": %.2f, \"batteryPercent\": %d}",
+                                    latitude, longitude, altitude, horizontalSpeed, batteryPercent);
 
                             // Send the data via WebSocket
                             Log.d(TAG, "Sending position: " + message);

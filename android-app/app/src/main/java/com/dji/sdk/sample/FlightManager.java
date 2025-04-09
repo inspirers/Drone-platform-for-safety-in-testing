@@ -126,6 +126,9 @@ class FlightManager {
     public Aircraft getAircraft() {
         return aircraft;
     }
+    public BatteryState getBatteryState(){
+        return batteryState;
+    }
 
     public CoordinatesActivity getCoordinatesActivity() {
         return coordinatesActivity;
