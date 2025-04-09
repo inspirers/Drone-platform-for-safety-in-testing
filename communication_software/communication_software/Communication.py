@@ -1,3 +1,4 @@
+from datetime import time
 import json
 import websockets
 from websockets import WebSocketServerProtocol
@@ -8,14 +9,15 @@ import asyncio
 import redis
 from aiortc import RTCSessionDescription, RTCPeerConnection, RTCIceCandidate
 
-# Redis connection setup
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
     r.ping()
-    print("Successfully connected to Redis!")
+    print("Successfully connected to Redis (Communication Server)!")
 except redis.exceptions.ConnectionError as e:
-    print(f"Error connecting to Redis: {e}")
+    print(f"Error connecting to Redis (Communication Server): {e}")
     exit()
+
+COMMAND_CHANNEL = "drone_commands"
 
 class Communication:
     def __init__(self) -> None:
@@ -26,6 +28,9 @@ class Communication:
         self.client_index = 0  # Tracks which coordinate to assign next
         self.video_feeds = {}  # Video streams per connection
 
+        self.redis_listener_stop_event = threading.Event()
+        self.redis_listener_task = None
+
     async def send_coordinates_websocket(self, ip: str, droneOrigins: list, angles: list) -> None:
         """Starts WebSocket server and initializes drone coordinates."""
         print(f"Initializing WebSocket on IP: {ip}")
@@ -34,6 +39,55 @@ class Communication:
         ]
         server = await websockets.serve(self.webs_server, ip, 14500)
         print("WebSocket server started.")
+
+        """Listens for messages on the specified Redis channel in a blocking loop."""
+        print(f"[REDIS THREAD] Listener thread started for channel '{COMMAND_CHANNEL}'.")
+        pubsub = None
+        listener_redis_conn = None
+        while not self.redis_listener_stop_event.is_set(): # Loop until stop event is set
+            try:
+
+                listener_redis_conn = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+                listener_redis_conn.ping() # Verify connection
+                pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
+                pubsub.subscribe(COMMAND_CHANNEL)
+                print(f"[REDIS THREAD] Subscribed successfully to '{COMMAND_CHANNEL}'. Waiting...")
+
+                # Blocking listen loop
+                for message in pubsub.listen():
+                    if self.redis_listener_stop_event.is_set():
+                        print("[REDIS THREAD] Stop event detected, exiting listen loop.")
+                        break
+                    # message['data'] will be decoded string if decode_responses=True
+                    self.process_redis_command(self, message['data'])
+
+                # If loop exits normally (e.g., stop_event set), break outer loop too
+                break
+
+            except redis.exceptions.ConnectionError as e:
+                print(f"[REDIS THREAD] Connection error: {e}. Retrying in 5 seconds...")
+                if pubsub: pubsub.close()
+                if listener_redis_conn: listener_redis_conn.close()
+                pubsub = None
+                listener_redis_conn = None
+                time.sleep(5) # Wait before attempting to reconnect
+            except Exception as e:
+                print(f"[REDIS THREAD] Unexpected error in listener loop: {e}. Stopping thread.")
+                # Consider if retry is appropriate for other errors
+                break # Exit outer loop on unexpected errors
+            finally:
+                # Ensure cleanup even if loop breaks unexpectedly
+                if pubsub:
+                    try: pubsub.unsubscribe(COMMAND_CHANNEL)
+                    except: pass # Ignore errors during cleanup
+                    try: pubsub.close()
+                    except: pass
+                if listener_redis_conn:
+                    try: listener_redis_conn.close()
+                    except: pass
+
+        print("[REDIS THREAD] Listener thread finished.")
+
         await server.wait_closed()
 
     def transform_coordinates(self, coordinates: Coordinate, angle: int) -> tuple:
@@ -43,6 +97,90 @@ class Communication:
         alt = str(coordinates.alt)[:2]
         angle = str(angle)
         return (lat, lng, alt, angle)
+
+    def redis_command_listener(self,redis_client, channel, stop_event, instance=None):
+        """Listens for messages on the specified Redis channel in a blocking loop."""
+        print(f"[REDIS THREAD] Listener thread started for channel '{channel}'.")
+        pubsub = None
+        listener_redis_conn = None
+        while not stop_event.is_set(): # Loop until stop event is set
+            try:
+                # Create a connection specifically for this thread is often safer
+                # Ensure decode_responses=True for easier handling in process_redis_command
+                listener_redis_conn = redis.Redis(
+                    host=redis_client.connection_pool.connection_kwargs.get('host', 'localhost'),
+                    port=redis_client.connection_pool.connection_kwargs.get('port', 6379),
+                    db=redis_client.connection_pool.connection_kwargs.get('db', 0),
+                    decode_responses=True # Recommended
+                )
+                r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+
+
+                listener_redis_conn.ping() # Verify connection
+                pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
+                pubsub.subscribe(channel)
+                print(f"[REDIS THREAD] Subscribed successfully to '{channel}'. Waiting...")
+
+                # Blocking listen loop
+                for message in pubsub.listen():
+                    if stop_event.is_set():
+                        print("[REDIS THREAD] Stop event detected, exiting listen loop.")
+                        break
+                    # message['data'] will be decoded string if decode_responses=True
+                    self.process_redis_command(self,message['data'], instance)
+
+                # If loop exits normally (e.g., stop_event set), break outer loop too
+                break
+
+            except redis.exceptions.ConnectionError as e:
+                print(f"[REDIS THREAD] Connection error: {e}. Retrying in 5 seconds...")
+                if pubsub: pubsub.close()
+                if listener_redis_conn: listener_redis_conn.close()
+                pubsub = None
+                listener_redis_conn = None
+                time.sleep(5) # Wait before attempting to reconnect
+            except Exception as e:
+                print(f"[REDIS THREAD] Unexpected error in listener loop: {e}. Stopping thread.")
+                # Consider if retry is appropriate for other errors
+                break # Exit outer loop on unexpected errors
+            finally:
+                # Ensure cleanup even if loop breaks unexpectedly
+                if pubsub:
+                    try: pubsub.unsubscribe(channel)
+                    except: pass # Ignore errors during cleanup
+                    try: pubsub.close()
+                    except: pass
+                if listener_redis_conn:
+                    try: listener_redis_conn.close()
+                    except: pass
+
+        print("[REDIS THREAD] Listener thread finished.")
+
+    def process_redis_command(self, message_data):
+        """Processes command messages received from the Redis channel."""
+        # 'instance' would be 'self' from the class if passed, allowing
+        # interaction with the main object if needed (using thread-safe methods)
+        print(f"\n[REDIS SUB] Raw Command Data Received: {message_data}")
+        try:
+            data = json.loads(message_data)
+
+            target_drone_id = data.get("target_drone_id")
+            command = data.get("command")
+            payload = data.get("payload") # Access the nested payload
+            timestamp = data.get("timestamp")
+
+            print(f"[REDIS SUB] Processing Command: Drone={target_drone_id}, Cmd='{command}', Payload={payload}, TS={timestamp}")
+            response = {
+                "msg_type": command
+            }
+            self.connections[target_drone_id-1].send(json.dumps(response))
+            print(f"[REDIS SUB] Finished processing command for drone {target_drone_id}.")
+            # ----------------------------------------------------------
+
+        except json.JSONDecodeError:
+            print(f"[REDIS SUB] ERROR: Failed to decode JSON: {message_data}")
+        except Exception as e:
+            print(f"[REDIS SUB] ERROR: Unexpected error processing command: {e}")
 
     async def webs_server(self, ws: WebSocketServerProtocol) -> None:
         """Handles WebSocket connections."""

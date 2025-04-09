@@ -176,30 +176,71 @@ async def atos_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         print("ATOS client disconnected")
 
+COMMAND_CHANNEL = "drone_commands"
+
 @app.websocket("/api/v1/ws/flightmanager")
 async def flightmanager_websocket(websocket: WebSocket):
     await websocket.accept()
+    print("Flight Manager WebSocket connected")
     try:
         while True:
             data = await websocket.receive_json()
-            drone_id = data.get("drone_id")
+            drone_id = data.get("drone_id") # Logical ID (e.g., 1, 2)
             command = data.get("command")
-            if command == "take_off":
-                print(f"Sending take off command to drone: {drone_id}")
-            elif command == "arm":
-                print(f"Sending arm command to drone: {drone_id}")
-            elif command == "return_to_home":
-                print(f"Sending return to home command to drone: {drone_id}")
-            else: 
-                print("Unrecognized command")
-            await websocket.send_json(
-                {
-                    "drone_id": drone_id,
-                    "status": "success"
-                }
-            )
+            payload = data.get("payload", {}) # Optional additional data for the command
+
+            if drone_id is None or command is None:
+                print(f"Received invalid command data: {data}")
+                await websocket.send_json({"status": "error", "message": "Missing drone_id or command"})
+                continue
+
+            # Prepare the message to publish
+            message_to_publish = {
+                "target_drone_id": drone_id,
+                "command": command,
+                "payload": payload,
+                "timestamp": datetime.now().isoformat()
+            }
+            message_str = json.dumps(message_to_publish)
+
+            try:
+                print(f"Publishing command to Redis channel '{COMMAND_CHANNEL}': {message_str}")
+                await asyncio.to_thread(r.publish, COMMAND_CHANNEL, message_str) 
+                print(f"Successfully published command for drone {drone_id}")
+                await websocket.send_json(
+                    {
+                        "drone_id": drone_id,
+                        "command_sent": command,
+                        "status": "published" # Indicate it was sent to the backend
+                    }
+                )
+            except redis.exceptions.RedisError as e:
+                print(f"Redis error publishing command: {e}")
+                await websocket.send_json(
+                    {
+                        "drone_id": drone_id,
+                        "command_sent": command,
+                        "status": "error",
+                        "message": f"Redis publish error: {e}"
+                    }
+                )
+            except Exception as e:
+                 print(f"Unexpected error publishing command: {e}")
+                 await websocket.send_json(
+                    {
+                        "drone_id": drone_id,
+                        "command_sent": command,
+                        "status": "error",
+                        "message": f"Unexpected error: {e}"
+                    }
+                )
+
     except WebSocketDisconnect:
         print("Flight Manager WebSocket disconnected")
+    except Exception as e:
+        print(f"Error in flightmanager_websocket: {e}")
+    finally:
+        print("Closing flightmanager websocket")
 
 
 # Video Endpoints
