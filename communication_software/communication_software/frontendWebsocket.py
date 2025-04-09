@@ -176,6 +176,31 @@ async def atos_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         print("ATOS client disconnected")
 
+@app.websocket("/api/v1/ws/flightmanager")
+async def flightmanager_websocket(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            drone_id = data.get("drone_id")
+            command = data.get("command")
+            if command == "take_off":
+                print(f"Sending take off command to drone: {drone_id}")
+            elif command == "arm":
+                print(f"Sending arm command to drone: {drone_id}")
+            elif command == "return_to_home":
+                print(f"Sending return to home command to drone: {drone_id}")
+            else: 
+                print("Unrecognized command")
+            await websocket.send_json(
+                {
+                    "drone_id": drone_id,
+                    "status": "success"
+                }
+            )
+    except WebSocketDisconnect:
+        print("Flight Manager WebSocket disconnected")
+
 
 # Video Endpoints
 @app.get("/api/v1/video_feed/drone1")
