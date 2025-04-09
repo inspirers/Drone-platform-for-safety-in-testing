@@ -78,8 +78,9 @@ async def drone_websocket(websocket: WebSocket):
             processed_data_for_cycle = {} 
             # for drone_id in [1, 2]:
             drone_id=0
-            print(f"redis keys: {r.scan_iter(match="position_drone*")}")
-            for redis_key in r.scan_iter(match="position_drone*"):
+            redis_key_list = r.scan_iter(match="position_drone*")
+            print(f"redis keys: {redis_key_list}")
+            for redis_key in redis_key_list:
                 drone_id+=1
                 json_data_string = None
                 try:
@@ -99,9 +100,10 @@ async def drone_websocket(websocket: WebSocket):
                         lat = data_dict.get("latitude")
                         lng = data_dict.get("longitude")
                         alt = data_dict.get("altitude")
+                        speed = data_dict.get("speed")
 
-                        if lat is None or lng is None or alt is None:
-                            print(f"Warning: Missing position data fields in {redis_key}. Found: {data_dict}")
+                        if lat is None or lng is None or alt is None or speed is None:
+                            print(f"Warning: Missing position or speed data fields in {redis_key}. Found: {data_dict}")
                             if drone_id in atos.drone_data:
                                 processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
                             continue 
@@ -116,7 +118,7 @@ async def drone_websocket(websocket: WebSocket):
                                 "lat": lat,
                                 "lng": lng,
                                 "alt": alt,
-                                "speed": random.uniform(0, 15), # Calculate actual speed if available
+                                "speed": speed,
                                 "battery": max(0, atos.drone_data[drone_id].get("battery", 0) - 0.1)
                             }
                         )
