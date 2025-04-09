@@ -87,12 +87,14 @@ public class WebsocketClientHandler {
                         // Forward WebRTC signaling messages to WebRTCSignalingHandler
                         signalingHandler.processMessage(jsonMessage);
                     } else if (type.equals("flight_arm")) {
+                        Log.d(TAG, "Attempting to take off");
                         flightManager.onArm();
-
                     } else if (type.equals("flight_take_off")) {
-
+                        Log.d(TAG, "Attempting to take off");
+                        flightManager.startWaypointMission();
                     } else if (type.equals("flight_return_to_home")) {
-                    
+                        Log.d(TAG, "Attempting to return to home");
+                        flightManager.goingHome();
                     } else {
                         Log.w(TAG, "Unhandled message type: " + type);
                     }
