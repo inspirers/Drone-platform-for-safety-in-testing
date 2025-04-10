@@ -1,3 +1,4 @@
+# main.py
 import os
 import communication_software.CoordinateHandler as CoordinateHandler
 from communication_software.Communication import Communication
@@ -8,8 +9,21 @@ from communication_software.frontendWebsocket import run_server
 from communication_software.multiple_drone_optimization import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
-
 import rclpy
+
+# --- NEW async wrapper function ---
+async def run_comm_server(communication: Communication, ip: str, droneOrigins: list, angles: list):
+    """Gets the running loop, starts listener, then starts websocket server."""
+    # Get the currently running event loop
+    loop = asyncio.get_running_loop()
+    communication.loop = loop  # Store the loop in the Communication instance
+
+    # Now that the loop exists and is stored, start the thread that needs it
+    communication.start_redis_listener_thread()
+
+    # Start and run the WebSocket server
+    await communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)
+# --- End of NEW function ---
 
 def main() -> None:
     Interface.print_welcome()
@@ -17,79 +31,85 @@ def main() -> None:
         print("Trying to initialize rclpy")
         rclpy.init()
 
-    ATOScommunicator = AtosCommunication()  
+    ATOScommunicator = AtosCommunication()
     try:
         while True:
-            #if this method returns true it means that the user wants to proceed
             if Interface.print_menu():
                 ip = Interface.get_ip()
-
-                #Try to get the coordinates from the ROS2 service
                 ATOScommunicator.publish_init()
-                time.sleep(1)
+                time.sleep(1) # Consider replacing with async sleep or ROS2 wait mechanism if needed
 
-                # origo = ATOScommunicator.get_origin_coordinates()
                 origo = get_origo_coords(ATOScommunicator)
 
-                    #Gets the trajectories for all of the objects
                 ids = ATOScommunicator.get_object_ids()
                 trajectoryList = {}
                 for id in ids:
                     coordlist = ATOScommunicator.get_object_traj(id)
                     trajectoryList[id] = coordlist
 
-                droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList,origo)
+                droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList, origo) # Note: This returns one origin/angle?
 
-                #If the coordinate can not be found, None will be returned and the script will not continue
-                if droneOrigin == None:
+                if droneOrigin is None:
                     print("Coordinates could not be found")
                     continue
-                #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList,droneOrigin)
-                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle1: {angle2}, estimated overlap: {total_overlap}")
-                
-                droneOrigins = flyTo1,flyTo2
-                angles = angle1,angle2
-                
+
+                # --- Adjusting Drone Origins/Angles based on your logic ---
+                # Assuming getDronesLoc is the intended source for multiple drones
+                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList, droneOrigin) # Using droneOrigin from getNewDroneOrigin as input? Verify this logic.
+                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle2: {angle2}, estimated overlap: {total_overlap}")
+
+                droneOrigins = [flyTo1, flyTo2] # Make sure it's a list
+                angles = [angle1, angle2]       # Make sure it's a list
+
                 if len(droneOrigins) != len(angles):
                     print("Mismatch in the number of drone origins and angles.")
                     continue
-                
-                start_server(ATOScommunicator)
+                # --- End adjustment ---
+
+                start_server(ATOScommunicator) # Start FastAPI server thread
 
                 communication = Communication()
-                communication.start_redis_listener_thread()
-                try:
-                    print("Server starting, press ctrl + c to exit")
-                    asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)) 
-                except KeyboardInterrupt:
-                    print("The server was interrupted!")
-                    continue
-                except OSError as e:
-                    print(e)
+                # --> REMOVE communication.start_redis_listener_thread() from here
 
+                try:
+                    print("Communication server starting, press ctrl + c to exit")
+                    # --> CALL the new async wrapper function with asyncio.run
+                    asyncio.run(run_comm_server(communication, ip=ip, droneOrigins=droneOrigins, angles=angles))
+                except KeyboardInterrupt:
+                    print("\nCommunication server interrupted!")
+                    # Ensure cleanup happens if needed (e.g., stop threads)
+                    if communication.redis_listener_task and communication.redis_listener_task.is_alive():
+                         communication.redis_listener_stop_event.set()
+                         communication.redis_listener_task.join(timeout=2)
+                    continue # Continue the outer while loop in main
+                except OSError as e:
+                    print(f"OS Error starting server: {e}")
                     continue
                 except Exception as e:
-                    print(e)
+                    print(f"Unexpected error starting server: {e}")
                     continue
 
             else:
                 Interface.print_goodbye()
                 break
     finally:
-        ATOScommunicator.destroy_node()
-        rclpy.shutdown()
+        # Graceful shutdown
+        print("Shutting down ROS node...")
+        if ATOScommunicator:
+             ATOScommunicator.destroy_node()
+        if rclpy.is_initialized():
+            rclpy.shutdown()
+        print("Shutdown complete.")
 
 
-if __name__ == "__main__":
-    main()
-
+# start_server function remains the same
 def start_server(atos_communicator):
     server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
     server_thread.start()
     print("FastAPI server started in a separate thread!")
 
-def get_origo_coords(ATOScommunicator) -> CoordinateHandler.Coordinate: 
+# get_origo_coords and is_debug_mode remain the same
+def get_origo_coords(ATOScommunicator) -> CoordinateHandler.Coordinate:
     altitude = os.getenv("ENV_ALTITUDE")
     latitude = os.getenv("ENV_LATITUDE")
     longitude = os.getenv("ENV_LONGITUDE")
@@ -113,3 +133,6 @@ def is_debug_mode():
     else:
         print(f"Warning: Invalid DEBUG_MODE value: {debug_mode_str}.  Treating as false.")
         return False
+
+if __name__ == "__main__":
+    main()
