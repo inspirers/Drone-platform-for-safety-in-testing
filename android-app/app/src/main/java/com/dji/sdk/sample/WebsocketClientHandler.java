@@ -77,7 +77,7 @@ public class WebsocketClientHandler {
                 try {
                     JSONObject jsonMessage = new JSONObject(message);
                     String type = jsonMessage.getString("msg_type");
-                    FlightManager flightManager = FlightManager.getFlightManager();
+                    // FlightManager flightManager = FlightManager.getFlightManager();
 
                     if (type.equals("Coordinate_request")) {
                         Log.d(TAG, "Received: " + message);
@@ -88,12 +88,15 @@ public class WebsocketClientHandler {
                         signalingHandler.processMessage(jsonMessage);
                     } else if (type.equals("flight_arm")) {
                         Log.d(TAG, "Attempting to take off");
+                    FlightManager flightManager = FlightManager.getFlightManager();
                         flightManager.onArm();
                     } else if (type.equals("flight_take_off")) {
                         Log.d(TAG, "Attempting to take off");
+                    FlightManager flightManager = FlightManager.getFlightManager();
                         flightManager.startWaypointMission();
                     } else if (type.equals("flight_return_to_home")) {
                         Log.d(TAG, "Attempting to return to home");
+                    FlightManager flightManager = FlightManager.getFlightManager();
                         flightManager.goingHome();
                     } else {
                         Log.w(TAG, "Unhandled message type: " + type);

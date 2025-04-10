@@ -76,7 +76,7 @@ async def drone_websocket(websocket: WebSocket):
             processed_data_for_cycle = {} 
             drone_id=0
             redis_key_list = r.scan_iter(match="position_drone*")
-            print(f"redis keys: {redis_key_list}")
+            # print(f"redis keys: {redis_key_list}")
             for redis_key in redis_key_list:
                 drone_id+=1
                 json_data_string = None
