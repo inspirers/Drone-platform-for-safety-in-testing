@@ -186,16 +186,15 @@ async def flightmanager_websocket(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            drone_id = data.get("drone_id") # Logical ID (e.g., 1, 2)
+            drone_id = data.get("drone_id") 
             command = data.get("command")
-            payload = data.get("payload", {}) # Optional additional data for the command
+            payload = data.get("payload", {}) 
 
             if drone_id is None or command is None:
                 print(f"Received invalid command data: {data}")
                 await websocket.send_json({"status": "error", "message": "Missing drone_id or command"})
                 continue
 
-            # Prepare the message to publish
             message_to_publish = {
                 "target_drone_id": drone_id,
                 "command": command,
@@ -212,7 +211,7 @@ async def flightmanager_websocket(websocket: WebSocket):
                     {
                         "drone_id": drone_id,
                         "command_sent": command,
-                        "status": "published" # Indicate it was sent to the backend
+                        "status": "published" 
                     }
                 )
             except redis.exceptions.RedisError as e:
