@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from datetime import datetime
 import redis
+import redis.exceptions
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)

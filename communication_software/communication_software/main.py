@@ -26,7 +26,7 @@ def main() -> None:
 
                 #Try to get the coordinates from the ROS2 service
                 ATOScommunicator.publish_init()
-                time.sleep(5)
+                time.sleep(1)
 
                 # origo = ATOScommunicator.get_origin_coordinates()
                 origo = get_origo_coords(ATOScommunicator)

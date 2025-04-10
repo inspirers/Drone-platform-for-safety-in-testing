@@ -1,5 +1,7 @@
-from datetime import time
+# from datetime import time
+import time
 import json
+import redis.exceptions
 import websockets
 from websockets import WebSocketServerProtocol
 from communication_software.CoordinateHandler import Coordinate
@@ -54,8 +56,8 @@ class Communication:
         lat = str(coordinates.lat)[:9]
         lng = str(coordinates.lng)[:9]
         alt = str(coordinates.alt)[:2]
-        angle = str(angle)
-        return (lat, lng, alt, angle)
+        new_angle = str(angle)
+        return (lat, lng, alt, new_angle)
 
     def redis_command_listener(self,redis_client, channel, stop_event, instance=None):
         """Listens for messages on the specified Redis channel in a blocking loop."""
@@ -83,7 +85,7 @@ class Communication:
                     if stop_event.is_set():
                         print("[REDIS THREAD] Stop event detected, exiting listen loop.")
                         break
-                    self.process_redis_command(message['data'])
+                    res = self.process_redis_command(message['data'])
 
                 break
 
@@ -111,7 +113,7 @@ class Communication:
 
         print("[REDIS THREAD] Listener thread finished.")
 
-    def process_redis_command(self, message_data):
+    async def process_redis_command(self, message_data):
         print(f"\n[REDIS SUB] Raw Command Data Received (type: {type(message_data)}): {message_data}")
         try:
             data = json.loads(str(message_data))
@@ -132,14 +134,14 @@ class Communication:
             print(f"Conn keys list: {conn_keys_list}")
 
             if connection_index < len(conn_keys_list):
-                connection_key = conn_keys_list[connection_index]
-                print(f"Selected Connection Key: {connection_key}")
+                connection_id = str(conn_keys_list[connection_index])
+                print(f"Selected Connection Key: {connection_id}")
 
-                connection = conn[connection_key]
+                connection = conn[connection_id]
                 print(f"Conn object: {connection}")
                 response_json = json.dumps(response)
                 print(f"Sending msg to: {connection}, payload: {response}, as JSON: {response_json}")
-                connection.send(response_json) 
+                await connection.send(response_json) 
                 print(f"[REDIS SUB] Finished processing command for drone {target_drone_id}.")
             else:
                 print(f"[REDIS SUB] ERROR: connection_index {connection_index} is out of range for available connections ({len(conn_keys_list)}).")
