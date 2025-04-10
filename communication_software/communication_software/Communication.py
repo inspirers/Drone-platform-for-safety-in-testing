@@ -40,55 +40,14 @@ class Communication:
         server = await websockets.serve(self.webs_server, ip, 14500)
         print("WebSocket server started.")
 
-        """Listens for messages on the specified Redis channel in a blocking loop."""
-        print(f"[REDIS THREAD] Listener thread started for channel '{COMMAND_CHANNEL}'.")
-        pubsub = None
-        listener_redis_conn = None
-        while not self.redis_listener_stop_event.is_set(): # Loop until stop event is set
-            try:
-
-                listener_redis_conn = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
-                listener_redis_conn.ping() # Verify connection
-                pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
-                pubsub.subscribe(COMMAND_CHANNEL)
-                print(f"[REDIS THREAD] Subscribed successfully to '{COMMAND_CHANNEL}'. Waiting...")
-
-                # Blocking listen loop
-                for message in pubsub.listen():
-                    if self.redis_listener_stop_event.is_set():
-                        print("[REDIS THREAD] Stop event detected, exiting listen loop.")
-                        break
-                    # message['data'] will be decoded string if decode_responses=True
-                    self.process_redis_command(message['data'])
-
-                # If loop exits normally (e.g., stop_event set), break outer loop too
-                break
-
-            except redis.exceptions.ConnectionError as e:
-                print(f"[REDIS THREAD] Connection error: {e}. Retrying in 5 seconds...")
-                if pubsub: pubsub.close()
-                if listener_redis_conn: listener_redis_conn.close()
-                pubsub = None
-                listener_redis_conn = None
-                time.sleep(5) # Wait before attempting to reconnect
-            except Exception as e:
-                print(f"[REDIS THREAD] Unexpected error in listener loop: {e}. Stopping thread.")
-                # Consider if retry is appropriate for other errors
-                break # Exit outer loop on unexpected errors
-            finally:
-                # Ensure cleanup even if loop breaks unexpectedly
-                if pubsub:
-                    try: pubsub.unsubscribe(COMMAND_CHANNEL)
-                    except: pass # Ignore errors during cleanup
-                    try: pubsub.close()
-                    except: pass
-                if listener_redis_conn:
-                    try: listener_redis_conn.close()
-                    except: pass
-
-        print("[REDIS THREAD] Listener thread finished.")
-
-        await server.wait_closed()
+        try:
+            await server.wait_closed()
+        finally:
+            print("WebSocket server stopped.")
+            # Signal the listener thread to stop if it's still running
+            self.redis_listener_stop_event.set()
+            if self.redis_listener_task:
+                self.redis_listener_task.join(timeout=5) # Wait briefly for cleanup
 
     def transform_coordinates(self, coordinates: Coordinate, angle: int) -> tuple:
         """Transforms coordinates into required format."""
@@ -111,25 +70,21 @@ class Communication:
                     host=redis_client.connection_pool.connection_kwargs.get('host', 'localhost'),
                     port=redis_client.connection_pool.connection_kwargs.get('port', 6379),
                     db=redis_client.connection_pool.connection_kwargs.get('db', 0),
-                    decode_responses=True # Recommended
+                    decode_responses=True 
                 )
                 r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
-
 
                 listener_redis_conn.ping() # Verify connection
                 pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
                 pubsub.subscribe(channel)
                 print(f"[REDIS THREAD] Subscribed successfully to '{channel}'. Waiting...")
 
-                # Blocking listen loop
                 for message in pubsub.listen():
                     if stop_event.is_set():
                         print("[REDIS THREAD] Stop event detected, exiting listen loop.")
                         break
-                    # message['data'] will be decoded string if decode_responses=True
-                    self.process_redis_command(self,message['data'], instance)
+                    self.process_redis_command(message['data'])
 
-                # If loop exits normally (e.g., stop_event set), break outer loop too
                 break
 
             except redis.exceptions.ConnectionError as e:
@@ -157,25 +112,37 @@ class Communication:
         print("[REDIS THREAD] Listener thread finished.")
 
     def process_redis_command(self, message_data):
-        """Processes command messages received from the Redis channel."""
-        # 'instance' would be 'self' from the class if passed, allowing
-        # interaction with the main object if needed (using thread-safe methods)
         print(f"\n[REDIS SUB] Raw Command Data Received (type: {type(message_data)}): {message_data}")
         try:
             data = json.loads(str(message_data))
 
             target_drone_id = data.get("target_drone_id")
             command = data.get("command")
-            payload = data.get("payload") # Access the nested payload
+            payload = data.get("payload") 
             timestamp = data.get("timestamp")
 
             print(f"[REDIS SUB] Processing Command: Drone={target_drone_id}, Cmd='{command}', Payload={payload}, TS={timestamp}")
             response = {
                 "msg_type": command
             }
-            self.connections[target_drone_id-1].send(json.dumps(response))
-            print(f"[REDIS SUB] Finished processing command for drone {target_drone_id}.")
-            # ----------------------------------------------------------
+            conn = self.connections
+            print(f"{conn}")
+            connection_index = target_drone_id-1
+            conn_keys_list = list(conn.keys())
+            print(f"Conn keys list: {conn_keys_list}")
+
+            if connection_index < len(conn_keys_list):
+                connection_key = conn_keys_list[connection_index]
+                print(f"Selected Connection Key: {connection_key}")
+
+                connection = conn[connection_key]
+                print(f"Conn object: {connection}")
+                response_json = json.dumps(response)
+                print(f"Sending msg to: {connection}, payload: {response}, as JSON: {response_json}")
+                connection.send(response_json) 
+                print(f"[REDIS SUB] Finished processing command for drone {target_drone_id}.")
+            else:
+                print(f"[REDIS SUB] ERROR: connection_index {connection_index} is out of range for available connections ({len(conn_keys_list)}).")
 
         except json.JSONDecodeError:
             print(f"[REDIS SUB] ERROR: Failed to decode JSON: {message_data}")
@@ -326,6 +293,16 @@ class Communication:
                 print(f"Closing video feed for connection: {connection_id}")
                 break
         cv2.destroyWindow(f"Video Feed - {connection_id}")
+    def start_redis_listener_thread(self):
+        # Make sure 'r' is accessible or pass necessary connection details
+        self.redis_listener_stop_event = threading.Event()
+        self.redis_listener_task = threading.Thread(
+            target=self.redis_command_listener, # Use the method designed for threading
+            args=(r, COMMAND_CHANNEL, self.redis_listener_stop_event, self), # Pass self if needed
+            daemon=True # Optional: If main thread exits, this thread exits too
+        )
+        self.redis_listener_task.start()
+        print("Started Redis listener thread.")
 
 def incoming_position_handler(data, connection_id):
     """Handles incoming position data."""
@@ -339,3 +316,4 @@ def incoming_position_handler(data, connection_id):
         # print("Stored position data in Redis.")
     except (TypeError, redis.exceptions.RedisError) as e:
         print(f"Error processing position data: {e}")
+

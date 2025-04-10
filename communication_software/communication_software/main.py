@@ -58,6 +58,7 @@ def main() -> None:
                 start_server(ATOScommunicator)
 
                 communication = Communication()
+                communication.start_redis_listener_thread()
                 try:
                     print("Server starting, press ctrl + c to exit")
                     asyncio.run(communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)) 
