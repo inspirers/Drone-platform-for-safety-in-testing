@@ -107,10 +107,11 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     # Calculate the square size needed to cover the rectangle (taking overlap into account)
     square_size = (longer_extent*2) / n_drones  # Increase square size to cover the area
 
-    if square_size < shorter_extent:
-        square_size = shorter_extent 
-    
+    if square_size <= longer_extent:
+        square_size = 0.7*longer_extent
 
+    if square_size < shorter_extent:
+        square_size = 1.1*shorter_extent
 
     # Adjust the offset to match the increased square size
     split_axis = axis[0] if extent[0] > extent[1] else axis[1]
@@ -121,7 +122,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     print(height)
 
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
-    
+
     flyTo_coords = []
     for drone_center in drone_centers:
         drone_loc_x = drone_center[0]
@@ -174,7 +175,10 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     plt.grid()
     plt.show()
 
-    return flyTo_coords
+    split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
+    angle = np.degrees(split_angle_radians) + 90
+
+    return flyTo_coords, angle
 
 # Example usage
 def generate_trajectory(start_x, start_y, steps=10, step_size=3):
@@ -195,10 +199,10 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
 
 # Generate multiple vehicle trajectories
 coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
-    "Vehicle_2": generate_trajectory(randint(50, 100), randint(50, 100), steps=10),
-    "Vehicle_3": generate_trajectory(randint(100, 150), randint(100, 150), steps=10),
-    "Vehicle_4": generate_trajectory(randint(150, 200), randint(150, 200), steps=10),
+    "Vehicle_1": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
+    "Vehicle_2": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
+    "Vehicle_3": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
+    "Vehicle_4": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
     "Vehicle_5": generate_trajectory(randint(0, 200), randint(0, 200), steps=10)
 }
 
