@@ -129,16 +129,14 @@ def getDronesLoc(coordslist, droneOrigin):
     # Adjust overlap parameter O, where O=0 means no overlap, and O=1 means full overlap
     O = 0.2  # You can change this to any value between 0 and 1 to test different overlaps
 
-    # Determine the longer side and shorter side of the rectangle
+    # Determine the longer side
     longer_extent = max(extent)
-    shorter_extent = min(extent)
 
     # Compute the square size based on the longer extent to ensure full coverage
     # The square's side length needs to be at least the longer extent of the rectangle
     square_size = longer_extent
 
     # Compute the overlap and offset for the two squares
-    overlap = O * longer_extent  # When O=0, no overlap; when O=1, full overlap
     split_offset = (1 - O) * longer_extent  # This determines how much the squares are shifted
     split_axis = axis[0] if extent[0] > extent[1] else axis[1]
 

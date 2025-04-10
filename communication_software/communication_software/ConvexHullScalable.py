@@ -10,9 +10,29 @@ class Coordinate:
         self.alt = alt
 
 def calculate_Height(area):
-    return np.sqrt(area) * 10  # Example scaling function
+    """Calculates the height that the drone need to fly at to cover a certain area 
+    Args:
+        area (int): Which currently is preset to 1500, unit: m^2
 
-def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
+    Returns:
+            height (int): The height to fly at, unit: m 
+    """
+    #area = the FOV area to be covered in m^2
+    theta = (82.6/2)*(np.pi/180) #chalmers drone has a lens of 82.6 degrees, convert to rad
+    x = np.sqrt(area/(16*9)) #FOV is 16:9 resolution 
+    y = (16*x)/4 #Photosensor is 4:3 resolution
+    radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
+    height = radius / np.tan(theta) 
+    height = round(height) #no need for decimals
+    if height < 100: #swedish regulation limits the drone flying height to below 120 m
+        return height 
+    else:
+        print("The height exceeds swedish regulations")
+        height = 99
+        return height
+
+
+def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     coords = []
     for coordList in coordslist.values():
         for coord in coordList:
@@ -28,7 +48,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
             self.axis = [np.array([0.0, 0.0]), np.array([0.0, 0.0])]
             self.extent = [0.0, 0.0]
             self.area = float('inf')
-
+  
     def normalize(v):
         return v / np.linalg.norm(v)
 
@@ -38,7 +58,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
     def dot(v1, v2):
         return np.dot(v1, v2)
 
-    def min_area_rectangle_of_hull(polygon):
+    def min_area_rectangle_of_hull(polygon): # takes convex hull as input
         min_rect = Rectangle()
         n = len(polygon)
         
@@ -58,7 +78,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
                 max0 = max(max0, dot0)
                 
                 dot1 = dot(U1, D)
-                max1 = max(max1, dot1)
+                max1 = max(max1, dot1)                               
             
             area = (max0 - min0) * max1
             
@@ -83,13 +103,23 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
     
     # Calculate the longer extent
     longer_extent = max(extent)
+    shorter_extent = min(extent)
     # Calculate the square size needed to cover the rectangle (taking overlap into account)
-    square_size = (longer_extent * 2) / np.sqrt(n_drones)  # Increase square size to cover the area
+    square_size = (longer_extent*2) / n_drones  # Increase square size to cover the area
+
+    if square_size < shorter_extent:
+        square_size = shorter_extent 
+    
+
 
     # Adjust the offset to match the increased square size
     split_axis = axis[0] if extent[0] > extent[1] else axis[1]
-    split_offset = square_size * (1 - overlap)
+    split_offset = square_size * (1 - overlap) * 2 
     
+    height = calculate_Height(square_size**2)
+
+    print(height)
+
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
     
     flyTo_coords = []
@@ -103,7 +133,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
         lat = droneOrigin.lat + delta_lat
         long = droneOrigin.lng + delta_long
         
-        flyTo_coords.append(Coordinate(lat, long, calculate_Height(square_size**2)))
+        flyTo_coords.append(Coordinate(lat, long, height))
     
     # Plot results
     plt.figure(figsize=(8, 8))
@@ -136,6 +166,8 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=1):
         plt.plot(square_corners[:, 0], square_corners[:, 1], 'g-', label="Drone Coverage" if drone_center[0] == drone_centers[0][0] else "")
 
     plt.legend()
+    plt.quiver(center[0], center[1], axis[0][0], axis[0][1], angles='xy', scale_units='xy', scale=1, color='magenta', label='Axis 0')
+    plt.quiver(center[0], center[1], axis[1][0], axis[1][1], angles='xy', scale_units='xy', scale=1, color='cyan', label='Axis 1')
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
     plt.title("Drone Coverage Area")
@@ -154,8 +186,8 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
         delta_x = choice([-step_size, 0, step_size])
         delta_y = choice([-step_size, 0, step_size])
         
-        new_x = max(0, min(20, trajectory[-1].lat + delta_x))
-        new_y = max(0, min(20, trajectory[-1].lng + delta_y))
+        new_x = max(0, min(100, trajectory[-1].lat + delta_x))
+        new_y = max(0, min(100, trajectory[-1].lng + delta_y))
         
         trajectory.append(Coordinate(new_x, new_y, 0))
     
@@ -163,11 +195,11 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
 
 # Generate multiple vehicle trajectories
 coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 5), randint(0, 5), steps=10),
-    "Vehicle_2": generate_trajectory(randint(5, 10), randint(5, 10), steps=10),
-    "Vehicle_3": generate_trajectory(randint(10, 15), randint(10, 15), steps=10),
-    "Vehicle_4": generate_trajectory(randint(15, 20), randint(15, 20), steps=10),
-    "Vehicle_5": generate_trajectory(randint(0, 20), randint(0, 20), steps=10)
+    "Vehicle_1": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_2": generate_trajectory(randint(50, 100), randint(50, 100), steps=10),
+    "Vehicle_3": generate_trajectory(randint(100, 150), randint(100, 150), steps=10),
+    "Vehicle_4": generate_trajectory(randint(150, 200), randint(150, 200), steps=10),
+    "Vehicle_5": generate_trajectory(randint(0, 200), randint(0, 200), steps=10)
 }
 
 droneOrigin = Coordinate(0, 0, 0)
