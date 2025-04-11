@@ -9,11 +9,21 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Semaphore;
 import dev.gustavoavila.websocketclient.WebSocketClient;
+import android.content.Context;
+
+
+import org.webrtc.CapturerObserver;
+import org.webrtc.NV12Buffer;
+import org.webrtc.SurfaceTextureHelper;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoFrame;
+import com.dji.sdk.sample.DJIVideoCapturer;  // Import DJIVideoCapturer (your custom implementation)
+
+
 
 public class WebsocketClientHandler {
     private static WebsocketClientHandler clientHandler = null;
     private URI uri = null;
-    private WebRTCSignalingHandler signalingHandler;
     private final WebSocketClient webSocketClient;
     public static final String TAG = WebsocketClientHandler.class.getName();
     private boolean connected = false;
@@ -21,9 +31,15 @@ public class WebsocketClientHandler {
     private byte[] lastBytesReceived = null;
     public static Semaphore new_string = new Semaphore(0);
     public static Semaphore status_update = new Semaphore(0);
-
+    private final Context context;
     private WSPosition wsPositionRunnable;
     private Thread wsPositionThread;
+    private WebRTCClient webRTCClient; 
+    private DJIVideoCapturer DJIVideoCapturer; 
+    private WebRTCMediaOptions webRTCMediaOptions;  
+   
+    
+
 
     /**
      * Get the active instance of the WebsocketClientHandler.
@@ -40,33 +56,35 @@ public class WebsocketClientHandler {
         return clientHandler != null;
     }
 
-    public void sendIceCandidate(IceCandidate candidate) {
-        try {
-            JSONObject message = new JSONObject();
-            message.put("msg_type", "candidate");
-            message.put("sdpMid", candidate.sdpMid);
-            message.put("sdpMLineIndex", candidate.sdpMLineIndex);
-            message.put("candidate", candidate.sdp);
-            send(message.toString());
-            Log.d(TAG, "Sent ICE candidate: " + message.toString());
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to send ICE candidate", e);
-        }
-    }
-
-    public static WebsocketClientHandler createInstance(URI uri){
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler createInstance(Context context, URI uri){
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
-    private WebsocketClientHandler(URI uri){
+    public WebSocketClient getWebSocketClient() {
+        return webSocketClient;
+    }
+
+    
+
+    private WebsocketClientHandler(Context context, URI uri){
         this.uri = uri;
+        this.context = context;
         webSocketClient = new WebSocketClient(uri) {
             @Override
             public void onOpen() {
                 Log.d(TAG, "New connection opened on URI " + getUri());
                 connected = true;
+
+                 // Initialize WebRTCClient if not already done
+                 if (webRTCClient == null) {
+                    // Assuming `videoCapturer` and `webRTCClientHandler` are available/initialized
+                    VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2"); // Initialize your video capturer
+                    WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
+                    webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);  // 'this' refers to the WebsocketClientHandler instance
+                }
                 startPositionSending();
+
                 WebsocketClientHandler.status_update.release();
             }
 
@@ -83,13 +101,12 @@ public class WebsocketClientHandler {
                         Log.d(TAG, "Received: " + message);
                         lastStringReceived = message;
                         new_string.release();
-                    } else if (type.equals("offer") || type.equals("answer") || type.equals("candidate")) {
-                        // Forward WebRTC signaling messages to WebRTCSignalingHandler
-                        signalingHandler.processMessage(jsonMessage);
                     } else if (type.equals("flight_arm")) {
                         Log.d(TAG, "Attempting to take off");
                     FlightManager flightManager = FlightManager.getFlightManager();
                         flightManager.onArm();
+                    } else if (type.equals("offer") || type.equals("candidate") || type.equals("answer")) {
+                        webRTCClient.handleWebRTCMessage(jsonMessage);
                     } else if (type.equals("flight_take_off")) {
                         Log.d(TAG, "Attempting to take off");
                     FlightManager flightManager = FlightManager.getFlightManager();
@@ -135,6 +152,10 @@ public class WebsocketClientHandler {
                 Log.d(TAG, String.format("Closed with code %d, %s", reason, description));
                 connected = false;
                 stopPositionSending();
+                if (webRTCClient != null) {
+                    webRTCClient.dispose();  // Ensure resources are released when WebSocket closes
+                    webRTCClient = null;
+                }
                 WebsocketClientHandler.status_update.release();
             }
         };
@@ -147,8 +168,8 @@ public class WebsocketClientHandler {
         return uri;
     }
 
-    public static WebsocketClientHandler resetClientHandler(URI uri) {
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler resetClientHandler(Context context, URI uri) {
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
@@ -238,5 +259,7 @@ public class WebsocketClientHandler {
         wsPositionThread = null;
          Log.i(TAG, "Position sending stopped.");
     }
+
+
 }
 

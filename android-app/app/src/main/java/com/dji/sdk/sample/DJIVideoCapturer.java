@@ -1,3 +1,7 @@
+/* Originally sourced from
+* https://chromium.googlesource.com/external/webrtc/+/b6760f9e4442410f2bcb6090b3b89bf709e2fce2/webrtc/api/android/java/src/org/webrtc/CameraVideoCapturer.java
+* and rewritten to work for DJI drones.
+*  */
 package com.dji.sdk.sample;
 
 import org.webrtc.CapturerObserver;
@@ -5,16 +9,12 @@ import org.webrtc.NV12Buffer;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoFrame;
-import org.webrtc.EglBase;
 
 
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.media.MediaFormat;
 import android.os.SystemClock;
-import android.util.Log;
-
-
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -27,23 +27,22 @@ public class DJIVideoCapturer implements VideoCapturer {
     private final static String TAG = "DJIStreamer";
 
     private static DJICodecManager codecManager;
-    private static final ArrayList<CapturerObserver> observers = new ArrayList<>();
+    private static final ArrayList<CapturerObserver> observers = new ArrayList<CapturerObserver>();
 
+    private final String droneDisplayName;
     private Context context;
     private CapturerObserver capturerObserver;
 
-    public DJIVideoCapturer() {
-        // No need for droneDisplayName anymore
+    public DJIVideoCapturer(String droneDisplayName){
+        this.droneDisplayName = droneDisplayName;
     }
 
     private void setupVideoListener() {
-        if (codecManager != null) return;
-
-        if (context == null) {
-            Log.e(TAG, "Context is null, cannot initialize DJICodecManager.");
-            return;
+        if (codecManager != null) {
+            return; // If codecManager is already initialized, return immediately
         }
-
+    
+        // Pass SurfaceTexture as null to force the YUV callback - width and height do not matter here
         codecManager = new DJICodecManager(context, (SurfaceTexture) null, 0, 0);
         codecManager.enabledYuvData(true);
         codecManager.setYuvDataCallback(new DJICodecManager.YuvDataCallback() {
@@ -51,39 +50,61 @@ public class DJIVideoCapturer implements VideoCapturer {
             public void onYuvDataReceived(MediaFormat mediaFormat, ByteBuffer videoBuffer, int dataSize, int width, int height) {
                 if (videoBuffer != null) {
                     try {
+                        // Convert to NV12Buffer and create a VideoFrame
                         long timestampNS = TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime());
-                        NV12Buffer buffer = new NV12Buffer(width,
+                        NV12Buffer buffer = new NV12Buffer(
+                                width,
                                 height,
                                 mediaFormat.getInteger(MediaFormat.KEY_STRIDE),
                                 mediaFormat.getInteger(MediaFormat.KEY_SLICE_HEIGHT),
                                 videoBuffer,
-                                null);
+                                null
+                        );
                         VideoFrame videoFrame = new VideoFrame(buffer, 0, timestampNS);
-
-                        synchronized (observers) {
-                            for (CapturerObserver obs : observers) {
-                                obs.onFrameCaptured(videoFrame);
-                            }
+    
+                        // Feed the video frame to all observers
+                        for (CapturerObserver obs : observers) {
+                            obs.onFrameCaptured(videoFrame);
                         }
                         videoFrame.release();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        e.printStackTrace(); // Improved error logging can be added here
                     }
                 }
             }
         });
-
-        VideoFeeder.VideoDataListener videoDataListener = new VideoFeeder.VideoDataListener() {
-            @Override
-            public void onReceive(byte[] bytes, int dataSize) {
-                if (codecManager != null) {
-                    codecManager.sendDataToDecoder(bytes, dataSize);
-                }
-            }
-        };
-
-        VideoFeeder.getInstance().getPrimaryVideoFeed().addVideoDataListener(videoDataListener);
+    
+        // Handle video data listener for specific drone models
+        addVideoDataListenerForDroneModel(this.droneDisplayName);
     }
+    
+    private void addVideoDataListenerForDroneModel(String droneModel) {
+        switch (droneModel) {
+            case "DJI Mavic Enterprise 2":
+                // Only add listener once for this drone model to avoid duplication
+                if (!isListenerAdded) {
+                    VideoFeeder.VideoDataListener videoDataListener = new VideoFeeder.VideoDataListener() {
+                        @Override
+                        public void onReceive(byte[] bytes, int dataSize) {
+                            // Send the encoded data to codec manager for YUV decoding
+                            codecManager.sendDataToDecoder(bytes, dataSize);
+                        }
+                    };
+                    VideoFeeder.getInstance().getPrimaryVideoFeed().addVideoDataListener(videoDataListener);
+                    isListenerAdded = true; // Flag indicating that listener has been added
+                }
+                break;
+    
+            // Add more cases for different drone models as needed
+            default:
+                // Handle default case or add more models
+                break;
+        }
+    }
+    
+    // A flag to prevent adding the listener multiple times
+    private boolean isListenerAdded = false;
+    
 
     @Override
     public void initialize(SurfaceTextureHelper surfaceTextureHelper, Context applicationContext,
@@ -91,37 +112,29 @@ public class DJIVideoCapturer implements VideoCapturer {
         this.context = applicationContext;
         this.capturerObserver = capturerObserver;
 
-        if (!observers.contains(capturerObserver)) {
-            observers.add(capturerObserver);
-        }
+        observers.add(capturerObserver);
     }
 
     @Override
     public void startCapture(int width, int height, int framerate) {
+        // Hook onto the DJI onYuvDataReceived event
         setupVideoListener();
     }
 
     @Override
     public void stopCapture() throws InterruptedException {
-        if (codecManager != null) {
-            codecManager = null;
-        }
     }
 
     @Override
     public void changeCaptureFormat(int width, int height, int framerate) {
-        // Empty on purpose, but you could implement dynamic format changes if needed
+        // Empty on purpose
     }
 
     @Override
     public void dispose() {
-        if (observers.contains(capturerObserver)) {
+        // Stop receiving frames on the callback from the decoder
+        if (observers.contains(capturerObserver))
             observers.remove(capturerObserver);
-        }
-
-        if (codecManager != null) {
-            codecManager = null;
-        }
     }
 
     @Override

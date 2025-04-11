@@ -8,6 +8,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.TextureView;
+import android.content.Context;
+
 
 import com.dji.sdk.sample.databinding.ActivityServerBinding;
 
@@ -23,7 +25,6 @@ import dji.thirdparty.afinal.core.AsyncTask;
 public class ServerActivity extends AppCompatActivity {
     private final String TAG = ServerActivity.class.getName();
     private WebsocketClientHandler websocketClientHandler;
-    private WebRTCSignalingHandler signalingHandler;
     EditText ipTextEdit;
     EditText portEdit;
 
@@ -58,13 +59,13 @@ public class ServerActivity extends AppCompatActivity {
 
         // There is a new URI in the field, create a new Client
         if (WebsocketClientHandler.isInstanceCreated() && newUri != websocketClientHandler.getUri()) {
-            websocketClientHandler = WebsocketClientHandler.resetClientHandler(newUri);
+            websocketClientHandler = WebsocketClientHandler.resetClientHandler(getApplicationContext(),newUri);
         } else if (WebsocketClientHandler.isInstanceCreated()) {
             //Otherwise, it's the same socket, just get the new one
             websocketClientHandler = WebsocketClientHandler.getInstance();
         } else {
             // If there is none, create a new one.
-            websocketClientHandler = WebsocketClientHandler.createInstance(newUri);
+            websocketClientHandler = WebsocketClientHandler.createInstance(getApplicationContext(),newUri);
         }
 
         //Connect only if the client isn't connected
@@ -77,21 +78,6 @@ public class ServerActivity extends AppCompatActivity {
         }
     }
 
-    public void onWebSocketConnected() {
-        // Initialize the WebRTCSignalingHandler
-        signalingHandler = new WebRTCSignalingHandler(websocketClientHandler, this); // `this` provides the Activity's Context
-
-        // Find the TextureView from your activity's layout
-        TextureView textureView = findViewById(R.id.video_texture_view);
-
-        if (textureView != null) {
-            // Start WebRTC signaling (it will create and send SDP offer)
-            signalingHandler.startWebRTCSignaling(textureView);
-        } else {
-            Log.e(TAG, "TextureView not found in the layout.");
-            Toast.makeText(this, "Unable to initialize WebRTC signaling: TextureView not found.", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     /**
      * Sends a simple websocket message, for debugging.
