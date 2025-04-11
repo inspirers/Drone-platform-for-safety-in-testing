@@ -9,6 +9,7 @@ import cv2
 import asyncio
 import redis
 from aiortc import RTCSessionDescription, RTCPeerConnection, RTCIceCandidate
+from communication_software.DroneStreamManager import DroneStreamManager
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
@@ -24,14 +25,16 @@ class Communication:
     def __init__(self) -> None:
         self.connections = {}  # Active WebSocket connections
         self.coordinates = {}  # Coordinates for each client
-        self.peer_connections = {}  # RTCPeerConnections per client
         self.drone_coordinates = []  # List of drone coordinates
         self.client_index = 0  # Tracks which coordinate to assign next
-        self.video_feeds = {}  # Video streams per connection
+        
         
         self.loop = None
         self.redis_listener_stop_event = threading.Event()
         self.redis_listener_task = None
+        self.stream_manager = DroneStreamManager()
+        
+        
 
     async def send_coordinates_websocket(self, ip: str, droneOrigins: list, angles: list) -> None:
         """Starts WebSocket server and initializes drone coordinates."""
@@ -271,11 +274,13 @@ class Communication:
             elif msg_type == "Debug":
                 msg = data.get("msg", "")
                 print(f"Debug message: {msg}")
-            elif msg_type == "offer":
-                await self.handle_offer(data, connection_id)
             elif msg_type == "candidate":
+                #Todo: Handle ICE candidates
+                candidate = data.get("candidate")
                 await self.handle_candidate(data, connection_id)
             elif msg_type == "answer":
+                #Todo: Handle SDP answer
+                await self.handle_answer(data, connection_id)
                 print(f"Received SDP answer from {connection_id}: {data}")
             else:
                 print(f"Unhandled `msg_type`: {msg_type}")
@@ -283,56 +288,6 @@ class Communication:
             print(f"Malformed JSON received from {connection_id}: {frame}")
         except Exception as e:
             print(f"Error processing message from {connection_id}: {e}")
-
-    async def handle_offer(self, data, connection_id):
-        """Handles SDP offers from the client."""
-        try:
-            pc = self.peer_connections.get(connection_id)
-            if not pc:
-                pc = RTCPeerConnection()
-                self.peer_connections[connection_id] = pc
-
-                @pc.on("track")
-                def on_track(track):
-                    print(f"Track received from {connection_id}, type: {track.kind}")
-                    if track.kind == "video":
-                        self.video_feeds[connection_id] = track
-                        threading.Thread(target=self.display_video, args=(connection_id, track)).start()
-
-            sdp = data.get("sdp")
-            if not sdp:
-                raise ValueError("Missing `sdp` field in offer message.")
-            offer = RTCSessionDescription(sdp=sdp, type="offer")
-            await pc.setRemoteDescription(offer)
-
-            answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            response = {
-                "msg_type": "answer",
-                "sdp": pc.localDescription.sdp
-            }
-            await self.connections[connection_id].send(json.dumps(response))
-            print(f"Sent SDP answer to client {connection_id}")
-        except Exception as e:
-            print(f"Error handling SDP offer for {connection_id}: {e}")
-
-    async def handle_candidate(self, data, connection_id):
-        """Handles ICE candidates from the client."""
-        try:
-            pc = self.peer_connections.get(connection_id)
-            if not pc:
-                raise ValueError(f"No PeerConnection found for client {connection_id}.")
-
-            sdpMid = data.get("sdpMid")
-            sdpMLineIndex = data.get("sdpMLineIndex")
-            candidate = data.get("candidate")
-            if not all([sdpMid, sdpMLineIndex, candidate]):
-                raise ValueError("Missing ICE candidate fields in message.")
-            ice_candidate = RTCIceCandidate(sdpMid=sdpMid, sdpMLineIndex=sdpMLineIndex, candidate=candidate)
-            await pc.addIceCandidate(ice_candidate)
-            print(f"Added ICE candidate for client {connection_id}")
-        except Exception as e:
-            print(f"Error handling ICE candidate for {connection_id}: {e}")
 
     async def send_coords(self, connection_id: str) -> None:
         """Sends assigned coordinates to the client."""
@@ -358,22 +313,8 @@ class Communication:
         """Cleans up connections and PeerConnections when a client disconnects."""
         self.connections.pop(connection_id, None)
         self.coordinates.pop(connection_id, None)
-        pc = self.peer_connections.pop(connection_id, None)
-        if pc:
-            pc.close()
-            print(f"Closed PeerConnection for client {connection_id}")
-        print(f"Connection {connection_id} removed.")
 
-    def display_video(self, connection_id, track):
-        """Displays incoming video feed using OpenCV."""
-        print(f"Starting video feed for connection: {connection_id}")
-        for frame in track.frames():
-            img = frame.to_ndarray(format="bgr24")
-            cv2.imshow(f"Video Feed - {connection_id}", img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print(f"Closing video feed for connection: {connection_id}")
-                break
-        cv2.destroyWindow(f"Video Feed - {connection_id}")
+        print(f"Connection {connection_id} removed.")
 
     def start_redis_listener_thread(self):
         """Starts the Redis listener thread."""
@@ -407,3 +348,22 @@ class Communication:
             r.set(f"position_drone{connection_id}", json_data_string, ex=10)
         except (TypeError, redis.exceptions.RedisError) as e:
             print(f"Error processing position data: {e}")
+            
+            
+    async def handle_candidate(self, data, connection_id):
+        """Handle ICE candidate from client."""
+        drone_id = int(data['drone_id'])
+        stream = self.stream_manager.get_stream_by_drone_id(drone_id)
+        candidate = data['candidate']
+        stream.peer_connection.add_ice_candidate(candidate)
+        print(f"Added ICE candidate for drone {drone_id}")
+        
+    async def handle_answer(self, data, connection_id):
+        """Handle SDP answer from client."""
+        drone_id = int(data['drone_id'])
+        stream = self.stream_manager.get_stream_by_drone_id(drone_id)
+        stream.peer_connection.set_remote_description(data['sdp'])
+        print(f"Set remote description for drone {drone_id}")
+            
+            
+    

@@ -63,7 +63,7 @@ public class WebRTCClient {
     }
 
     private static void initializeFactory(Context context){
-        // EglBase seems to be used for Hardware-acceleration for our video. Could help with smoothing things. (keep it)
+        // EglBase seems to be used for Hardware-acceleration for our video.
         EglBase rootEglBase = EglBase.create();
 
         // Initialize the PeerConnectionFactory
@@ -115,7 +115,7 @@ public class WebRTCClient {
                 peerConnection.setLocalDescription(new SimpleSdpObserver(), sessionDescription);
                 JSONObject message = new JSONObject();
                 try {
-                    message.put("type", "answer");
+                    message.put("msg_type", "answer");
                     message.put("sdp", sessionDescription.description);
                     sendMessage(message);
                 } catch (JSONException e) {
@@ -198,7 +198,7 @@ public class WebRTCClient {
                 JSONObject message = new JSONObject();
 
                 try {
-                    message.put("type", "candidate");
+                    message.put("msg_type", "candidate");
                     message.put("label", iceCandidate.sdpMLineIndex);
                     message.put("id", iceCandidate.sdpMid);
                     message.put("candidate", iceCandidate.sdp);
