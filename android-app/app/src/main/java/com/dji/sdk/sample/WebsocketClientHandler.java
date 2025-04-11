@@ -1,5 +1,6 @@
 package com.dji.sdk.sample;
 
+import android.os.HandlerThread;
 import android.util.Log;
 import org.webrtc.IceCandidate; // WebRTC ICE Candidate
 import org.json.JSONObject; // JSON handling
@@ -10,6 +11,8 @@ import java.net.URI;
 import java.util.concurrent.Semaphore;
 import dev.gustavoavila.websocketclient.WebSocketClient;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 
 import org.webrtc.CapturerObserver;
@@ -75,17 +78,17 @@ public class WebsocketClientHandler {
             public void onOpen() {
                 Log.d(TAG, "New connection opened on URI " + getUri());
                 connected = true;
-
-                 // Initialize WebRTCClient if not already done
-                 if (webRTCClient == null) {
-                    // Assuming `videoCapturer` and `webRTCClientHandler` are available/initialized
-                    VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2"); // Initialize your video capturer
-                    WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
-                    webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);  // 'this' refers to the WebsocketClientHandler instance
-                }
-                startPositionSending();
-
-                WebsocketClientHandler.status_update.release();
+            
+                // Run UI-related logic on the main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (webRTCClient == null) {
+                        VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2");
+                        WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
+                        webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);
+                    }
+                    startPositionSending(); // Ensure position sending starts properly
+                    WebsocketClientHandler.status_update.release();
+                });
             }
 
 
@@ -227,39 +230,40 @@ public class WebsocketClientHandler {
         return false;
     }
 
+    private HandlerThread wsPositionHandlerThread;
+    private Handler wsPositionHandler;
+    
     private synchronized void startPositionSending() {
-        if (wsPositionThread == null || !wsPositionThread.isAlive()) {
-            Log.i(TAG, "Starting position sending thread...");
-            wsPositionRunnable = new WSPosition(this.webSocketClient); // Pass the client
-            wsPositionThread = new Thread(wsPositionRunnable, "WebSocketPositionSender");
-            wsPositionThread.start();
+        if (wsPositionHandlerThread == null || !wsPositionHandlerThread.isAlive()) {
+            Log.i(TAG, "Starting position sending HandlerThread...");
+            wsPositionHandlerThread = new HandlerThread("WebSocketPositionSender");
+            wsPositionHandlerThread.start();
+            wsPositionHandler = new Handler(wsPositionHandlerThread.getLooper());
+            wsPositionRunnable = new WSPosition(this.webSocketClient);
+    
+            // Run WSPosition logic in the HandlerThread
+            wsPositionHandler.post(wsPositionRunnable);
         } else {
-            Log.w(TAG, "Position sending thread already running.");
+            Log.w(TAG, "Position sending HandlerThread already running.");
         }
     }
-
+    
     private synchronized void stopPositionSending() {
-        if (wsPositionRunnable != null) {
-            Log.i(TAG, "Requesting position sending thread to stop...");
-            wsPositionRunnable.stopRunning(); // Signal the runnable to stop
-        }
-        if (wsPositionThread != null && wsPositionThread.isAlive()) {
-            Log.i(TAG, "Interrupting position sending thread...");
-            wsPositionThread.interrupt(); // Interrupt sleep/wait
+        if (wsPositionHandlerThread != null) {
+            Log.i(TAG, "Stopping position sending HandlerThread...");
+            wsPositionHandlerThread.quitSafely(); // Quit the HandlerThread gracefully
             try {
-                // Optionally wait a short time for the thread to finish cleanly
-                 wsPositionThread.join(500); // Wait max 500ms
-                 Log.i(TAG, "Position sending thread joined.");
+                wsPositionHandlerThread.join(); // Wait for it to finish
+                Log.i(TAG, "HandlerThread stopped.");
             } catch (InterruptedException e) {
-                Log.w(TAG, "Interrupted while joining position sending thread.");
+                Log.w(TAG, "Interrupted while stopping HandlerThread.");
                 Thread.currentThread().interrupt();
             }
+            wsPositionRunnable = null; // Clear references
+            wsPositionHandlerThread = null;
+            wsPositionHandler = null;
         }
-        wsPositionRunnable = null; // Clear references
-        wsPositionThread = null;
-         Log.i(TAG, "Position sending stopped.");
     }
-
 
 }
 

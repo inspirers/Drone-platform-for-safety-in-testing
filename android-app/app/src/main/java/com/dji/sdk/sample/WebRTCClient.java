@@ -156,6 +156,8 @@ public class WebRTCClient {
         PeerConnection.IceServer stun =  PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer();
         iceServers.add(stun);
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(iceServers);
+        rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.PLAN_B;
+
 
         PeerConnection.Observer pcObserver = new PeerConnection.Observer() {
             @Override
