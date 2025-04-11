@@ -245,6 +245,8 @@ class Communication:
         self.coordinates[connection_id] = assigned_coord
         self.client_index += 1
         print(f"Assigned coordinate {assigned_coord} to client {connection_id}")
+        
+        self.stream_manager.setup_socket_event(self.webs_server)
 
         try:
             while True:
@@ -351,19 +353,19 @@ class Communication:
             
             
     async def handle_candidate(self, data, connection_id):
-        """Handle ICE candidate from client."""
+        """Handle ICE candidate."""
         drone_id = int(data['drone_id'])
         stream = self.stream_manager.get_stream_by_drone_id(drone_id)
-        candidate = data['candidate']
-        stream.peer_connection.add_ice_candidate(candidate)
-        print(f"Added ICE candidate for drone {drone_id}")
-        
+        await stream.peer_connection.addIceCandidate(data['candidate'])
+        print(f"[WebRTC] Added ICE candidate for drone {drone_id}")
+
     async def handle_answer(self, data, connection_id):
-        """Handle SDP answer from client."""
+        """Handle SDP answer."""
         drone_id = int(data['drone_id'])
         stream = self.stream_manager.get_stream_by_drone_id(drone_id)
-        stream.peer_connection.set_remote_description(data['sdp'])
-        print(f"Set remote description for drone {drone_id}")
+        await stream.peer_connection.setRemoteDescription(RTCSessionDescription(
+            sdp=data['sdp'], type="answer"
+        ))
             
             
     
