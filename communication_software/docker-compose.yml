@@ -61,17 +61,11 @@ services:
     ports:
       - 8001:80
 
-  srs:
-    container_name: srs
-    stdin_open: true
-    tty: true
+  nginx-rtmp:
     ports:
-        - 1935:1935
-        - 1985:1985
-        - 8083:8080
-        - 8002:8000/udp
-        - 10080:10080/udp
-    image: ossrs/srs:6
+      - 1935:1935
+    container_name: nginx-rtmp
+    image: tiangolo/nginx-rtmp
     networks:
       - atos-net
   redis:
