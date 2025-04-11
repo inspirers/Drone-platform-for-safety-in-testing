@@ -31,8 +31,14 @@ def calculate_Height(area):
         height = 99
         return height
 
+class ProximityError(Exception):
+
+    def __init__(self, message="Does not take more than one drone and overlap over 90 percent"):
+        super().__init__(message)
 
 def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
+    if n_drones >= 2 and overlap > 0.9:
+        raise ProximityError
     coords = []
     for coordList in coordslist.values():
         for coord in coordList:
@@ -113,32 +119,33 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     
     step = 0.98  # reduction factor per loop
     split_offset = float("inf")
-
-    if square_size <= shorter_extent:
-        square_size = shorter_extent*1.2
-
-    while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
+    iter = 0
+    if n_drones >= 2:         
+        while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
+            iter += 1
+            print(iter)
+            square_size *= step
+            split_offset = (square_size * (1 - overlap) * 2) 
+        drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
+        
         if square_size <= shorter_extent:
-            square_size = shorter_extent*1.2
-            break
-
-        square_size *= step
-
-        split_offset = square_size * (1 - overlap) * 2
-
-        drone_centers = [center + (i - (n_drones - 1) / 2) * (split_offset/(2-step)) * split_axis for i in range(n_drones)]
+            square_size = shorter_extent*1.3
+            split_offset = (square_size * (1 - overlap) * 2)
+            drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
     
-    square_size *= 1.05 #extra cushion for size
-    drone_centers = [center + (i - (n_drones - 1) / 2) * (split_offset/(2-step)) * split_axis for i in range(n_drones)]
-    
+    if n_drones == 1: 
+        square_size = 1.1*longer_extent
+        drone_centers = [center]
+
     height = calculate_Height((2*square_size)**2)
+    print(height)
     # Reduce square size 
     
     flyTo_coords = []
     for drone_center in drone_centers:
         drone_loc_x = drone_center[0]
         drone_loc_y = drone_center[1]
-        
+
         delta_lat = drone_loc_x / 6371000 * (180 / np.pi)
         delta_long = (drone_loc_y / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
         
@@ -155,7 +162,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     hull = ConvexHull(coords)
     for simplex in hull.simplices:
         plt.plot(coords[simplex, 0], coords[simplex, 1], 'k--', label='Convex Hull' if simplex[0] == 0 else "")
-
+        
     # Bounding Rectangle
     rect_corners = np.array([  
         center + extent[0] * axis[0] + extent[1] * axis[1],
@@ -184,6 +191,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     plt.ylabel("Latitude")
     plt.title("Drone Coverage Area")
     plt.grid()
+    plt.axis('equal')
     plt.show()
 
     split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
@@ -193,7 +201,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
 # Example usage
 def generate_trajectory(start_x, start_y, steps=10, step_size=3):
-    """Generates a vehicle trajectory with smooth movements."""
+    """Generates a vehicle t§rajectory with smooth movements."""
     trajectory = [Coordinate(start_x, start_y, 0)]
     
     for _ in range(steps - 1):
@@ -210,11 +218,11 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
 
 # Generate multiple vehicle trajectories
 coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_2": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_3": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_4": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_5": generate_trajectory(randint(0, 100), randint(0, 100), steps=10)
+    "Vehicle_1": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_2": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_3": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_4": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_5": generate_trajectory(randint(0, 50), randint(0, 50), steps=10)
 }
 
 droneOrigin = Coordinate(0, 0, 0)
