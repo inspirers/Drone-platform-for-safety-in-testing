@@ -89,6 +89,14 @@
                             <button id="startBtn" class="btn btn-success btn-lg">Start Test</button>
                             <button id="stopBtn" class="btn btn-danger btn-lg">Emergency Stop</button>
                         </div>
+                        <div class="mt-3 all-drone-controls text-center"> 
+                            <hr> 
+                            <h5>All Drone Commands</h5>
+                            <button id="armAllBtn" data-command="flight_arm" class="btn btn-warning all-drone-command-btn">Arm All</button>
+                            <button id="takeoffAllBtn" data-command="flight_take_off" class="btn btn-success all-drone-command-btn">Take Off All</button>
+                            <button id="rthAllBtn" data-command="flight_return_to_home" class="btn btn-info all-drone-command-btn">Return Home All</button>
+                        </div>
+
                     </div>
                 </div>
 
@@ -201,6 +209,20 @@
                     sendFlightCommand(droneId, command);
                 } else {
                     console.error("Button is missing data-drone-id or data-command attribute:", this);
+                }
+            });
+        });
+        document.querySelectorAll('.all-drone-command-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const command = this.getAttribute('data-command');
+                if (command) {
+                    console.log(`Sending command '${command}' to all drones.`);
+                    sendFlightCommand(1, command);
+                    sendFlightCommand(2, command);
+                    // Add more drone IDs here if needed in the future
+                    // sendFlightCommand(3, command);
+                } else {
+                    console.error("All-drone command button is missing data-command attribute:", this);
                 }
             });
         });
