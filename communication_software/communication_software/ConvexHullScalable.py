@@ -101,28 +101,39 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     center = np.array(rect.center)
     extent = np.array(rect.extent)
     
-    # Calculate the longer extent
+    # Define the starting and stopping sizes
     longer_extent = max(extent)
     shorter_extent = min(extent)
-    # Calculate the square size needed to cover the rectangle (taking overlap into account)
-    square_size = (longer_extent*2) / n_drones  # Increase square size to cover the area
+    square_size = longer_extent
 
-    if square_size <= longer_extent:
-        square_size = 0.7*longer_extent
-
-    if square_size < shorter_extent:
-        square_size = 1.1*shorter_extent
-
-    # Adjust the offset to match the increased square size
-    split_axis = axis[0] if extent[0] > extent[1] else axis[1]
-    split_offset = square_size * (1 - overlap) * 2 
+    if extent[0] > extent[1]:
+        split_axis = axis[0]
+    else:
+        split_axis = axis[1]
     
-    height = calculate_Height(square_size**2)
+    step = 0.98  # reduction factor per loop
+    split_offset = float("inf")
 
-    print(height)
+    if square_size <= shorter_extent:
+        square_size = shorter_extent*1.2
 
-    drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
+    while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
+        if square_size <= shorter_extent:
+            square_size = shorter_extent*1.2
+            break
 
+        square_size *= step
+
+        split_offset = square_size * (1 - overlap) * 2
+
+        drone_centers = [center + (i - (n_drones - 1) / 2) * (split_offset/(2-step)) * split_axis for i in range(n_drones)]
+    
+    square_size *= 1.05 #extra cushion for size
+    drone_centers = [center + (i - (n_drones - 1) / 2) * (split_offset/(2-step)) * split_axis for i in range(n_drones)]
+    
+    height = calculate_Height((2*square_size)**2)
+    # Reduce square size 
+    
     flyTo_coords = []
     for drone_center in drone_centers:
         drone_loc_x = drone_center[0]
@@ -199,11 +210,11 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
 
 # Generate multiple vehicle trajectories
 coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
-    "Vehicle_2": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
-    "Vehicle_3": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
-    "Vehicle_4": generate_trajectory(randint(0, 200), randint(0, 200), steps=10),
-    "Vehicle_5": generate_trajectory(randint(0, 200), randint(0, 200), steps=10)
+    "Vehicle_1": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_2": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_3": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_4": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_5": generate_trajectory(randint(0, 100), randint(0, 100), steps=10)
 }
 
 droneOrigin = Coordinate(0, 0, 0)
