@@ -64,12 +64,24 @@
                             <div>Altitude: <span id="alt1">--</span> m</div>
                             <div>Speed: <span id="speed1">--</span> m/s</div>
                             <div>Battery: <span id="battery1">--</span>%</div>
+
+                            <div class="drone-controls mt-2">
+                                <button id="armBtn1" data-drone-id="1" data-command="flight_arm" class="btn btn-warning btn-sm">Arm</button>
+                                <button id="takeoffBtn1" data-drone-id="1" data-command="flight_take_off" class="btn btn-success btn-sm">Take Off</button>
+                                <button id="rthBtn1" data-drone-id="1" data-command="flight_return_to_home" class="btn btn-info btn-sm">Return Home</button>
+                            </div>
                         </div>
                         <div class="status-card mb-3">
                             <h5>Drone 2 Status</h5>
                             <div>Altitude: <span id="alt2">--</span> m</div>
                             <div>Speed: <span id="speed2">--</span> m/s</div>
                             <div>Battery: <span id="battery2">--</span>%</div>
+                            <div class="drone-controls mt-2">
+                                <button id="armBtn2" data-drone-id="2" data-command="flight_arm" class="btn btn-warning btn-sm">Arm</button>
+                                <button id="takeoffBtn2" data-drone-id="2" data-command="flight_take_off" class="btn btn-success btn-sm">Take Off</button>
+                                <button id="rthBtn2" data-drone-id="2" data-command="flight_return_to_home" class="btn btn-info btn-sm">Return Home</button>
+                            </div>
+
                         </div>
 
                         <!-- Control Buttons -->
@@ -107,6 +119,7 @@
         // WebSocket Connections
         const droneWS = new WebSocket('${BACKEND_URL}/api/v1/ws/drone');
         const atosWS = new WebSocket('${BACKEND_URL}/api/v1/ws/atos');
+        const flightmanagerWS = new WebSocket('${BACKEND_URL}/api/v1/ws/flightmanager');
 
         // Handle Layout Changes
         document.getElementById('layoutSelect').addEventListener('change', function() {
@@ -164,6 +177,34 @@
             statusElement.textContent = data.test_active ? "TEST ACTIVE" : "TEST INACTIVE";
             statusElement.className = `badge ${data.test_active ? 'bg-success' : 'bg-secondary'} float-end`;
         };
+
+        function sendFlightCommand(droneId, command) {
+            if (flightmanagerWS.readyState === WebSocket.OPEN) {
+                const message = {
+                    drone_id: parseInt(droneId, 10), 
+                    command: command
+                };
+                const jsonMessage = JSON.stringify(message);
+                flightmanagerWS.send(jsonMessage);
+                console.log(`Sent command to flightmanagerWS: ${jsonMessage}`);
+            } else {
+                console.error("FlightManager WebSocket is not open. Cannot send command:", command, "for drone", droneId);
+                alert("FlightManager connection is not active. Cannot send command."); // User feedback
+            }
+        }
+
+        document.querySelectorAll('.drone-controls button').forEach(button => {
+            button.addEventListener('click', function() {
+                const droneId = this.getAttribute('data-drone-id');
+                const command = this.getAttribute('data-command');
+                if (droneId && command) {
+                    sendFlightCommand(droneId, command);
+                } else {
+                    console.error("Button is missing data-drone-id or data-command attribute:", this);
+                }
+            });
+        });
+
     </script>
 </body>
 </html>
