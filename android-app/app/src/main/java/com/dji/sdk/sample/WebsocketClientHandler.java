@@ -78,18 +78,27 @@ public class WebsocketClientHandler {
             public void onOpen() {
                 Log.d(TAG, "New connection opened on URI " + getUri());
                 connected = true;
-            
+
                 // Run UI-related logic on the main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (webRTCClient == null) {
-                        VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2");
-                        WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
-                        webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);
+                        try {
+                            Log.d(TAG, "Initializing WebRTCClient...");
+                            VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2");
+                            WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
+                            webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);
+                            Log.d(TAG, "WebRTCClient initialized successfully.");
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error initializing WebRTCClient: " + e.getMessage(), e);
+                        }
+                    } else {
+                        Log.w(TAG, "WebRTCClient already initialized.");
                     }
                     startPositionSending(); // Ensure position sending starts properly
                     WebsocketClientHandler.status_update.release();
                 });
             }
+
 
 
 
@@ -156,11 +165,13 @@ public class WebsocketClientHandler {
                 connected = false;
                 stopPositionSending();
                 if (webRTCClient != null) {
-                    webRTCClient.dispose();  // Ensure resources are released when WebSocket closes
-                    webRTCClient = null;
+                    webRTCClient.dispose();
+                    webRTCClient = null; // Nullify to prevent further usage
+                    Log.d(TAG, "WebRTCClient disposed and nullified.");
                 }
                 WebsocketClientHandler.status_update.release();
-            }
+        }
+
         };
         webSocketClient.setConnectTimeout(15000);
         webSocketClient.setReadTimeout(30000);

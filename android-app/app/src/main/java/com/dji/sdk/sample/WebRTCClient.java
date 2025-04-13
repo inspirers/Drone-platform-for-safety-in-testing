@@ -55,12 +55,19 @@ public class WebRTCClient {
         this.context = context;
         this.options = options;
         this.videoCapturer = videoCapturer;
-        this.websocketClientHandler = websocketClientHandler;
-
+    
+        if (WebsocketClientHandler.getInstance() == null) {
+            Log.e(TAG, "WebsocketClientHandler is null during WebRTCClient initialization.");
+        } else {
+            this.websocketClientHandler = WebsocketClientHandler.getInstance();
+            Log.d(TAG, "WebsocketClientHandler initialized successfully.");
+        }
+    
         createVideoTrackFromVideoCapturer();
         initializePeerConnection();
         startStreamingVideo();
     }
+    
 
     private static void initializeFactory(Context context){
         // EglBase seems to be used for Hardware-acceleration for our video.
@@ -84,11 +91,11 @@ public class WebRTCClient {
     public void handleWebRTCMessage(JSONObject message){
         try {
             Log.d(TAG, "connectToSignallingServer: got message " + message);
-            if (message.getString("type").equals("offer")) {
+            if (message.getString("msg_type").equals("offer")) {
                 Log.d(TAG, "connectToSignallingServer: received an offer");
                 peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(OFFER, message.getString("sdp")));
                 answerCall();
-            } else if (message.getString("type").equals("candidate")) {
+            } else if (message.getString("msg_type").equals("candidate")) {
                 Log.d(TAG, "connectToSignallingServer: receiving candidates");
                 IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString("candidate"));
                 peerConnection.addIceCandidate(candidate);
