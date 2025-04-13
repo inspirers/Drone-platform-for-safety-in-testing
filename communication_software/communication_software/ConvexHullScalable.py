@@ -123,7 +123,9 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     if n_drones >= 2:         
         while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
             iter += 1
-            print(iter)
+            if iter >= 99:
+                print("Max iterations reached")
+                break
             square_size *= step
             split_offset = (square_size * (1 - overlap) * 2) 
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
