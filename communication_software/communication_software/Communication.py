@@ -8,8 +8,10 @@ import threading
 import cv2
 import asyncio
 import redis
-from aiortc import RTCSessionDescription, RTCPeerConnection, RTCIceCandidate
-from communication_software.DroneStreamManager import DroneStreamManager
+
+from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceCandidate
+from aiortc.contrib.media import MediaRecorder
+from aiortc.sdp import candidate_from_sdp 
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
@@ -20,6 +22,24 @@ except redis.exceptions.ConnectionError as e:
     exit()
 
 COMMAND_CHANNEL = "drone_commands"
+
+
+from aiortc import RTCConfiguration, RTCIceServer
+
+ice_configuration = RTCConfiguration(
+    iceServers=[RTCIceServer(urls='stun:stun.l.google.com:19302')]
+)
+
+class DroneStream:
+    def __init__(self, connection_id, video_tag_id):
+        self.connection_id = connection_id
+        self.video_tag_id = video_tag_id
+        self.peer_connection = RTCPeerConnection(configuration=ice_configuration)
+        self.recorder = MediaRecorder(f"{connection_id}_{video_tag_id}_recording.mp4")
+
+    async def close(self):
+        await self.peer_connection.close()
+        await self.recorder.stop()
 
 class Communication:
     def __init__(self) -> None:
@@ -32,7 +52,9 @@ class Communication:
         self.loop = None
         self.redis_listener_stop_event = threading.Event()
         self.redis_listener_task = None
-        self.stream_manager = DroneStreamManager()
+        self.ongoing_streams = {}
+        self.stream_obj = None  # Placeholder for stream display/output
+        self.peer_connections = {}
         
         
 
@@ -239,14 +261,14 @@ class Communication:
         print("Client connected.")
         connection_id = str(id(ws))
         self.connections[connection_id] = ws
+        self.create_peer_connection(connection_id)
+        await self.start_drone_stream(connection_id)
 
         available_coords = [coord for coord in self.drone_coordinates if coord not in self.coordinates.values()]
         assigned_coord = available_coords[0] if available_coords else self.drone_coordinates[self.client_index % len(self.drone_coordinates)]
         self.coordinates[connection_id] = assigned_coord
         self.client_index += 1
-        print(f"Assigned coordinate {assigned_coord} to client {connection_id}")
-        
-        self.stream_manager.setup_socket_event(self.webs_server)
+        print(f"Assigned coordinate {assigned_coord} to client {connection_id}")     
 
         try:
             while True:
@@ -277,12 +299,51 @@ class Communication:
                 msg = data.get("msg", "")
                 print(f"Debug message: {msg}")
             elif msg_type == "candidate":
-                #Todo: Handle ICE candidates
-                candidate = data.get("candidate")
-                await self.handle_candidate(data, connection_id)
+                candidate_sdp = data.get("candidate")
+                sdp_mid = data.get("sdpMid", data.get("id", "0"))
+                mline_index = int(data.get("sdpMLineIndex", data.get("label", 0)))
+
+                if not candidate_sdp:
+                    print(f"[RTC WARNING] Missing 'candidate' field: {data}")
+                    return
+
+                # Parse the candidate line properly
+                rtc_candidate = candidate_from_sdp(candidate_sdp)
+
+                rtc_candidate = RTCIceCandidate(
+                    foundation=rtc_candidate.foundation,
+                    component=rtc_candidate.component,
+                    priority=rtc_candidate.priority,
+                    ip=rtc_candidate.ip,
+                    port=rtc_candidate.port,
+                    protocol=rtc_candidate.protocol,
+                    type=rtc_candidate.type,
+                    sdpMid=sdp_mid,
+                    sdpMLineIndex=mline_index,
+                    relatedAddress=rtc_candidate.relatedAddress,
+                    relatedPort=rtc_candidate.relatedPort,
+                    tcpType=rtc_candidate.tcpType,
+                )
+
+                await self.peer_connections[connection_id].addIceCandidate(rtc_candidate)
+                print(f"[RTC] Added ICE candidate from {connection_id}: {candidate_sdp}")
+ 
             elif msg_type == "answer":
                 #Todo: Handle SDP answer
-                await self.handle_answer(data, connection_id)
+                if connection_id in self.peer_connections:
+                    sdp = data.get("sdp")
+                    sdp_type = data.get("type") or data.get("msg_type")
+
+                    if sdp_type not in ("answer", "offer"):
+                        print(f"[RTC ERROR] Unexpected SDP type: {sdp_type}")
+                        return
+
+                    await self.peer_connections[connection_id].setRemoteDescription(
+                        RTCSessionDescription(sdp=sdp, type=sdp_type)
+)
+
+                else:
+                    print(f"[DroneStream] ERROR: Peer connection for {connection_id} not found.")
                 print(f"Received SDP answer from {connection_id}: {data}")
             else:
                 print(f"Unhandled `msg_type`: {msg_type}")
@@ -351,21 +412,117 @@ class Communication:
         except (TypeError, redis.exceptions.RedisError) as e:
             print(f"Error processing position data: {e}")
             
-            
-    async def handle_candidate(self, data, connection_id):
-        """Handle ICE candidate."""
-        drone_id = int(data['drone_id'])
-        stream = self.stream_manager.get_stream_by_drone_id(drone_id)
-        await stream.peer_connection.addIceCandidate(data['candidate'])
-        print(f"[WebRTC] Added ICE candidate for drone {drone_id}")
+        
+        
+    ###WEBBRTC###
+    
+    async def send_message(self, connection_id, message):
+        """Send a message to the WebSocket server."""
+        print(f"[DroneStream] Sending message: {message} to connection ID: {connection_id}")
+        try:
+            await self.connections[connection_id].send(json.dumps(message))
+        except websockets.exceptions.ConnectionClosed:
+                print(f"Connection {connection_id} closed, cleaning up.")
+                self.cleanup_connection(connection_id)
+                
+                
+    async def start_drone_stream(self,connection_id):
+        """Initiates the WebRTC stream with the drone."""
+        try:
+            offer = await self.peer_connections[connection_id].createOffer()
+            print(f"[DroneStream] WebRTC offer created: {offer.sdp}")
+            await self.peer_connections[connection_id].setLocalDescription(offer)
+            await self.send_message(connection_id, {'msg_type': 'offer', 'sdp': offer.sdp})
+                    
+        except Exception as e:
+            print(f"[DroneStream] Error in createOffer(): {e}")                              
+                            
+    #Creates a peer connection for each drone stream    
+    def create_peer_connection(self,connection_id):
+        """Create and configure the RTCPeerConnection."""
+        try:
+            self.peer_connections[connection_id] = RTCPeerConnection(configuration=ice_configuration)
 
-    async def handle_answer(self, data, connection_id):
-        """Handle SDP answer."""
-        drone_id = int(data['drone_id'])
-        stream = self.stream_manager.get_stream_by_drone_id(drone_id)
-        await stream.peer_connection.setRemoteDescription(RTCSessionDescription(
-            sdp=data['sdp'], type="answer"
-        ))
+            @self.peer_connections[connection_id].on("icecandidate")
+            async def on_ice_candidate(event):
+                if event.candidate:
+                    await self.send_message(connection_id, {
+                        'msg_type': 'candidate',
+                        'candidate': event.candidate.to_sdp(),
+                    })
+                else:
+                    print("[DroneStream] End of ICE candidates")
+
+            @self.peer_connections[connection_id].on("track")
+            def on_track(track):
+                print(f"[DroneStream] Received track: {track.kind}")
+                # Record incoming media
+                
+                self.ongoing_streams[connection_id] = {
+                "recorder": MediaRecorder(f'{connection_id}_output.mp4'),
+                "peer_connection": self.peer_connections[connection_id]
+                }
+                self.ongoing_streams[connection_id]["recorder"].addTrack(track)
+                asyncio.create_task(self.ongoing_streams[connection_id]["recorder"].start())
+
+
+            @self.peer_connections[connection_id].on("connectionstatechange")
+            async def on_connection_state_change():
+                state = self.peer_connections[connection_id].connectionState
+                states = {
+                    "new": "Connecting…",
+                    "checking": "Checking connection…",
+                    "connected": "Online",
+                    "disconnected": "Disconnecting…",
+                    "closed": "Offline",
+                    "failed": "Error",
+                }
+                print(f"[DroneStream] State: {states.get(state, 'Unknown')}")
+
+            # Add transceivers for video and audio
+            self.peer_connections[connection_id].addTransceiver('video', direction='recvonly')
+            self.peer_connections[connection_id].addTransceiver('audio', direction='recvonly')
+
+            print(f"[DroneStream] Created RTCPeerConnection: {self.peer_connections[connection_id]}")
+        except Exception as e:
+            print(f"[DroneStream] Failed to create PeerConnection: {e}")
+            
+
+
+    async def handle_incoming_webrtc_msg(self, connection_id, message):
+        """Route incoming WebRTC messages to the appropriate DroneStream."""
+        try:
+            drone_stream = self.get_stream_by_drone_id(connection_id)
+            await self.on_message(message, connection_id)
+            print(f"[Stream Manager] Message routed to DroneStream ({connection_id}) successfully.")
+        except KeyError as e:
+            print(f"[Stream Manager] Error: {e}")
+
+    async def get_stream_by_drone_id(self, connection_id):
+        """Retrieve a DroneStream by its ID."""
+        if connection_id in self.ongoing_streams:
+            return self.ongoing_streams[connection_id]
+        else:
+            raise KeyError(f"DroneID ('{connection_id}') not found in ongoing streams.")
+
+    async def create_drone_stream(self, connection_id, video_tag_id):
+        """Create and register a new DroneStream."""
+        stream = DroneStream(connection_id, video_tag_id)
+        self.ongoing_streams[connection_id] = stream
+        await asyncio.sleep(0)  # Placeholder to maintain async context
+        return stream
+
+   
+    async def close_drone_stream(self, connection_id):
+        """Close and clean up a DroneStream."""
+        print(f"[Stream Manager] Closing drone stream for ID: {connection_id}")
+        try:
+            stream = await self.get_stream_by_drone_id(connection_id)
+            asyncio.create_task(stream.peer_connection.close())
+            del self.ongoing_streams[connection_id]
+        except KeyError:
+            print(f"[Stream Manager] Error: Drone stream not found.")        
+            
             
             
     
