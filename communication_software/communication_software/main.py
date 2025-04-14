@@ -15,7 +15,7 @@ async def run_comm_server(communication: Communication, ip: str, droneOrigins: l
     loop = asyncio.get_running_loop()
     communication.loop = loop  
 
-    communication.start_redis_listener_thread()
+    # communication.start_redis_listener_thread()
 
     await communication.send_coordinates_websocket(ip=ip, droneOrigins=droneOrigins, angles=angles)
 
@@ -25,39 +25,40 @@ def main() -> None:
         print("Trying to initialize rclpy")
         rclpy.init()
 
-    ATOScommunicator = AtosCommunication()
+    # ATOScommunicator = AtosCommunication()
     try:
         while True:
             if Interface.print_menu():
                 ip = Interface.get_ip()
-                ATOScommunicator.publish_init()
-                time.sleep(1) 
+                # ATOScommunicator.publish_init()
+                # time.sleep(1) 
 
-                origo = get_origo_coords(ATOScommunicator)
+                # origo = get_origo_coords(ATOScommunicator)
 
-                ids = ATOScommunicator.get_object_ids()
-                trajectoryList = {}
-                for id in ids:
-                    coordlist = ATOScommunicator.get_object_traj(id)
-                    trajectoryList[id] = coordlist
+                # ids = ATOScommunicator.get_object_ids()
+                # trajectoryList = {}
+                # for id in ids:
+                #     coordlist = ATOScommunicator.get_object_traj(id)
+                #     trajectoryList[id] = coordlist
 
-                droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList, origo) 
+                # droneOrigin, angle = CoordinateHandler.getNewDroneOrigin(trajectoryList, origo) 
 
-                if droneOrigin is None:
-                    print("Coordinates could not be found")
-                    continue
+                # if droneOrigin is None:
+                #     print("Coordinates could not be found")
+                #     continue
 
-                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList, droneOrigin) 
-                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle2: {angle2}, estimated overlap: {total_overlap}")
-
-                droneOrigins = [flyTo1, flyTo2] 
-                angles = [angle1, angle2]       
+                # flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList, droneOrigin) 
+                # print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle2: {angle2}, estimated overlap: {total_overlap}")
+                
+                droneOrigins = [CoordinateHandler.Coordinate(lat=56.1234567, lng=56.1234567, alt=56) for _ in range(2)]
+                
+                angles = ["11", "11"]       
 
                 if len(droneOrigins) != len(angles):
                     print("Mismatch in the number of drone origins and angles.")
                     continue
 
-                start_server(ATOScommunicator) 
+                # start_server(ATOScommunicator) 
 
                 communication = Communication()
 
@@ -83,17 +84,18 @@ def main() -> None:
     finally:
         # Graceful shutdown
         print("Shutting down ROS node...")
-        if ATOScommunicator:
-             ATOScommunicator.destroy_node()
-        if rclpy.is_initialized():
-            rclpy.shutdown()
+        # if ATOScommunicator:
+        #      ATOScommunicator.destroy_node()
+        # if rclpy.is_initialized():
+        #     rclpy.shutdown()
         print("Shutdown complete.")
 
 
 def start_server(atos_communicator):
-    server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
-    server_thread.start()
-    print("FastAPI server started in a separate thread!")
+    # server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
+    # server_thread.start()
+    # print("FastAPI server started in a separate thread!")
+    pass
 
 def get_origo_coords(ATOScommunicator) -> CoordinateHandler.Coordinate:
     altitude = os.getenv("ENV_ALTITUDE")

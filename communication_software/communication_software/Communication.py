@@ -14,8 +14,8 @@ from aiortc.contrib.media import MediaRecorder
 from aiortc.sdp import candidate_from_sdp 
 
 try:
-    r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
-    r.ping()
+    # r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+    # r.ping()
     print("Successfully connected to Redis (Communication Server)!")
 except redis.exceptions.ConnectionError as e:
     print(f"Error connecting to Redis (Communication Server): {e}")
@@ -77,7 +77,7 @@ class Communication:
 
         if not self.redis_listener_task or not self.redis_listener_task.is_alive():
              print("Warning: Redis listener thread not started or alive. Starting it now.")
-             self.start_redis_listener_thread() # Assumes self.loop is set
+            #  self.start_redis_listener_thread() # Assumes self.loop is set
 
         server = await websockets.serve(self.webs_server, ip, 14500)
         print(f"WebSocket server started on ws://{ip}:14500")
@@ -115,35 +115,35 @@ class Communication:
 
         while not stop_event.is_set(): # Loop until stop event is set
             try:
-                listener_redis_conn = redis.Redis(
-                    host=redis_client.connection_pool.connection_kwargs.get('host', 'redis'), # Use 'redis' as default host
-                    port=redis_client.connection_pool.connection_kwargs.get('port', 6379),
-                    db=redis_client.connection_pool.connection_kwargs.get('db', 0),
-                    decode_responses=True,
-                    socket_connect_timeout=5, # Add timeout
-                    socket_keepalive=True     # Add keepalive
-                )
-                listener_redis_conn.ping() # Verify connection
-                pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
-                pubsub.subscribe(channel)
+                # listener_redis_conn = redis.Redis(
+                #     host=redis_client.connection_pool.connection_kwargs.get('host', 'redis'), # Use 'redis' as default host
+                #     port=redis_client.connection_pool.connection_kwargs.get('port', 6379),
+                #     db=redis_client.connection_pool.connection_kwargs.get('db', 0),
+                #     decode_responses=True,
+                #     socket_connect_timeout=5, # Add timeout
+                #     socket_keepalive=True     # Add keepalive
+                # )
+                # listener_redis_conn.ping() # Verify connection
+                # pubsub = listener_redis_conn.pubsub(ignore_subscribe_messages=True)
+                # pubsub.subscribe(channel)
                 print(f"[REDIS THREAD] Subscribed successfully to '{channel}'. Waiting...")
 
-                for message in pubsub.listen():
-                    if stop_event.is_set():
-                        print("[REDIS THREAD] Stop event detected, exiting listen loop.")
-                        break # Exit inner listen loop
+                # for message in pubsub.listen():
+                #     if stop_event.is_set():
+                #         print("[REDIS THREAD] Stop event detected, exiting listen loop.")
+                #         break # Exit inner listen loop
 
-                    if message and message.get('type') == 'message':
-                        print(f"[REDIS THREAD] Received message: {message['data']}")
-                        coro = self.process_redis_command(message['data'])
-                        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+                #     if message and message.get('type') == 'message':
+                #         print(f"[REDIS THREAD] Received message: {message['data']}")
+                #         coro = self.process_redis_command(message['data'])
+                #         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
 
-                        try:
-                            pass # Fire-and-forget is usually fine here
-                        except Exception as e:
-                            print(f"[REDIS THREAD] Error submitting/executing command: {e}")
-                    else:
-                        pass
+                #         try:
+                #             pass # Fire-and-forget is usually fine here
+                #         except Exception as e:
+                #             print(f"[REDIS THREAD] Error submitting/executing command: {e}")
+                #     else:
+                #         pass
 
                 if not stop_event.is_set():
                      print("[REDIS THREAD] Pubsub listen loop finished unexpectedly. Will attempt reconnect.")
@@ -294,10 +294,12 @@ class Communication:
             if msg_type == "Coordinate_request":
                 await self.send_coords(connection_id)
             elif msg_type == "Position":
-                self.incoming_position_handler(data, connection_id)
+                # self.incoming_position_handler(data, connection_id)
+                pass
             elif msg_type == "Debug":
                 msg = data.get("msg", "")
-                print(f"Debug message: {msg}")
+                # print(f"Debug message: {msg}")
+                pass
             elif msg_type == "candidate":
                 candidate_sdp = data.get("candidate")
                 sdp_mid = data.get("sdpMid", data.get("id", "0"))
@@ -437,6 +439,11 @@ class Communication:
         except Exception as e:
             print(f"[DroneStream] Error in createOffer(): {e}")                              
                             
+    def display_frame(img):
+        cv2.imshow("Live Stream", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+
     #Creates a peer connection for each drone stream    
     def create_peer_connection(self,connection_id):
         """Create and configure the RTCPeerConnection."""
@@ -458,6 +465,22 @@ class Communication:
                 print(f"[DroneStream] Received track: {track.kind}")
                 # Record incoming media
                 
+                # Show stream with openCV
+                async def process_video():
+                    while True:
+                        print("Awaiting img")
+                        frame = await track.recv()
+                        print("Awaiting img 2")
+
+
+                        img = frame.to_ndarray(format="bgr24")
+                        print(f"Frame shape: {img.shape}, dtype: {img.dtype}")
+
+                        # Save the frame to a file
+                        cv2.imwrite(f"{connection_id}_frame.jpg", img)
+                
+                asyncio.create_task(process_video())
+            
                 self.ongoing_streams[connection_id] = {
                 "recorder": MediaRecorder(f'{connection_id}_output.mp4'),
                 "peer_connection": self.peer_connections[connection_id]

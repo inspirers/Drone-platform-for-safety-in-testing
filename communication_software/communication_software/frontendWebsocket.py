@@ -11,8 +11,8 @@ import redis
 import redis.exceptions
 
 try:
-    r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
-    r.ping() # Check if the connection is successful
+    # r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+    # r.ping() # Check if the connection is successful
     print("Successfully connected to Redis!")
 except redis.exceptions.ConnectionError as e:
     print(f"Error connecting to Redis: {e}")
