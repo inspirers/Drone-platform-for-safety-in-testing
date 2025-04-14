@@ -4,7 +4,7 @@ import asyncio
 import time
 import threading
 from communication_software.frontendWebsocket import run_server
-from communication_software.ConvexHull import getDronesLoc
+from communication_software.ConvexHullScalable import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 
@@ -43,11 +43,12 @@ def main() -> None:
                     print("Coordinates could not be found")
                     continue
                 #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-                flyTo1, flyTo2, angle = getDronesLoc(trajectoryList,droneOrigin)
-                print(f"Drone 1 going to: {flyTo1}, \n angle: {angle}")
-                print(f"Drone 2 going to: {flyTo2}, \n angle: {angle}")
+                flyToList, angle = getDronesLoc(trajectoryList,droneOrigin)
+                    
+                for i, flyTo in enumerate(flyToList):
+                    print(f"Drone {i} going to: {flyTo}, \n angle: {angle}")
                 
-                droneOrigins = flyTo1,flyTo2
+                droneOrigins = tuple([coord for coord in flyToList])
                 angles = angle,angle
                 
                 start_server(ATOScommunicator)

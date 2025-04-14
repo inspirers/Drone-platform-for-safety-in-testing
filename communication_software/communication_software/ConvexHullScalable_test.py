@@ -156,9 +156,77 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         
         flyTo_coords.append(Coordinate(lat, long, height))
     
+    # Plot results
+    plt.figure(figsize=(8, 8))
+    plt.scatter(coords[:, 0], coords[:, 1], color='blue', label='Data Points')
+
+    # Convex Hull
+    hull = ConvexHull(coords)
+    for simplex in hull.simplices:
+        plt.plot(coords[simplex, 0], coords[simplex, 1], 'k--', label='Convex Hull' if simplex[0] == 0 else "")
+        
+    # Bounding Rectangle
+    rect_corners = np.array([  
+        center + extent[0] * axis[0] + extent[1] * axis[1],
+        center + extent[0] * axis[0] - extent[1] * axis[1],
+        center - extent[0] * axis[0] - extent[1] * axis[1],
+        center - extent[0] * axis[0] + extent[1] * axis[1],
+        center + extent[0] * axis[0] + extent[1] * axis[1]
+    ])
+    plt.plot(rect_corners[:, 0], rect_corners[:, 1], 'r-', label='Min Area Rectangle')
+
+    # Drone Coverage Squares
+    for drone_center in drone_centers:
+        square_corners = np.array([
+            drone_center + square_size * axis[0] + square_size * axis[1],
+            drone_center + square_size * axis[0] - square_size * axis[1],
+            drone_center - square_size * axis[0] - square_size * axis[1],
+            drone_center - square_size * axis[0] + square_size * axis[1],
+            drone_center + square_size * axis[0] + square_size * axis[1]
+        ])
+        plt.plot(square_corners[:, 0], square_corners[:, 1], 'g-', label="Drone Coverage" if drone_center[0] == drone_centers[0][0] else "")
+
+    plt.legend()
+    plt.quiver(center[0], center[1], axis[0][0], axis[0][1], angles='xy', scale_units='xy', scale=1, color='magenta', label='Axis 0')
+    plt.quiver(center[0], center[1], axis[1][0], axis[1][1], angles='xy', scale_units='xy', scale=1, color='cyan', label='Axis 1')
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.title("Drone Coverage Area")
+    plt.grid()
+    plt.axis('equal')
+    plt.show()
+
     split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
     angle = np.degrees(split_angle_radians) + 90
 
     return flyTo_coords, angle
 
+# Example usage
+def generate_trajectory(start_x, start_y, steps=10, step_size=3):
+    """Generates a vehicle t§rajectory with smooth movements."""
+    trajectory = [Coordinate(start_x, start_y, 0)]
+    
+    for _ in range(steps - 1):
+        # Move in a random direction with small increments
+        delta_x = choice([-step_size, 0, step_size])
+        delta_y = choice([-step_size, 0, step_size])
+        
+        new_x = max(0, min(100, trajectory[-1].lat + delta_x))
+        new_y = max(0, min(100, trajectory[-1].lng + delta_y))
+        
+        trajectory.append(Coordinate(new_x, new_y, 0))
+    
+    return trajectory
+
+# Generate multiple vehicle trajectories
+coordslist = {
+    "Vehicle_1": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_2": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_3": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_4": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
+    "Vehicle_5": generate_trajectory(randint(0, 50), randint(0, 50), steps=10)
+}
+
+droneOrigin = Coordinate(0, 0, 0)
+flyto = getDronesLoc(coordslist, droneOrigin)
 
