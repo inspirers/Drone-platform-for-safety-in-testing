@@ -10,9 +10,12 @@ services:
     networks:
       - atos-net
     ports:
-      - 8765:14500
+      - 8765:8765
       - 14500:14500
+      - 5000:5000
       - 8000:8000
+      - 3478:3478/udp  # STUN server port
+      - 8765:8765/udp  # WebRTC signaling port
     environment: 
       - ENV_ALTITUDE= 15 # does not matter probably
       - ENV_LATITUDE= 57.688903266630945

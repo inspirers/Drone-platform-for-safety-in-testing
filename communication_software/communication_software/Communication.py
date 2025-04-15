@@ -456,14 +456,18 @@ class Communication:
             @self.peer_connections[connection_id].on("track")
             def on_track(track):
                 print(f"[DroneStream] Received track: {track.kind}")
-                # Record incoming media
                 
-                self.ongoing_streams[connection_id] = {
+                #Here is where we would handle the incoming media stream
+                
+                
+                # Record incoming media currently removed since it does not work properly
+                
+                """self.ongoing_streams[connection_id] = {
                 "recorder": MediaRecorder(f'{connection_id}_output.mp4'),
                 "peer_connection": self.peer_connections[connection_id]
                 }
                 self.ongoing_streams[connection_id]["recorder"].addTrack(track)
-                asyncio.create_task(self.ongoing_streams[connection_id]["recorder"].start())
+                asyncio.create_task(self.ongoing_streams[connection_id]["recorder"].start())"""
 
 
             @self.peer_connections[connection_id].on("connectionstatechange")
@@ -524,5 +528,3 @@ class Communication:
             print(f"[Stream Manager] Error: Drone stream not found.")        
             
             
-            
-    
