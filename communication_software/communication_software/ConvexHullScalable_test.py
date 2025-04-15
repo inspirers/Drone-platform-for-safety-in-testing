@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+from scipy import optimize
 from random import randint, choice
 
 class Coordinate:
@@ -24,7 +25,7 @@ def calculate_Height(area):
     radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
     height = radius / np.tan(theta) 
     height = round(height) #no need for decimals
-    if height < 100: #swedish regulation limits the drone flying height to below 120 m
+    if height < 99: #swedish regulation limits the drone flying height to below 120 m
         return height 
     else:
         print("The height exceeds swedish regulations")
@@ -37,6 +38,7 @@ class ProximityError(Exception):
         super().__init__(message)
 
 def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
+
     if n_drones >= 2 and overlap > 0.9:
         raise ProximityError
     coords = []
@@ -120,6 +122,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     step = 0.98  # reduction factor per loop
     split_offset = float("inf")
     iter = 0
+
     if n_drones >= 2:         
         while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
             iter += 1
@@ -131,7 +134,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
         
         if square_size <= shorter_extent:
-            square_size = shorter_extent*1.3
+            square_size = shorter_extent*1.1
             split_offset = (square_size * (1 - overlap) * 2)
             drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
     
@@ -140,7 +143,21 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center]
 
     height = calculate_Height((2*square_size)**2)
-    print(height)
+
+    if height < 30:
+        height = 30
+        square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
+        split_offset = (square_size * (1 - overlap) * 2)
+        drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
+
+    if height == 99:
+        height = 99
+        square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
+        split_offset = (square_size * (1 - overlap) * 2)
+        drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
+        print("Can not ensure full coverage with same drone amount")
+
+    
     # Reduce square size 
     
     flyTo_coords = []
@@ -220,11 +237,11 @@ def generate_trajectory(start_x, start_y, steps=10, step_size=3):
 
 # Generate multiple vehicle trajectories
 coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
-    "Vehicle_2": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
-    "Vehicle_3": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
-    "Vehicle_4": generate_trajectory(randint(0, 50), randint(0, 50), steps=10),
-    "Vehicle_5": generate_trajectory(randint(0, 50), randint(0, 50), steps=10)
+    "Vehicle_1": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_2": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_3": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_4": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
+    "Vehicle_5": generate_trajectory(randint(0, 100), randint(0, 100), steps=10)
 }
 
 droneOrigin = Coordinate(0, 0, 0)

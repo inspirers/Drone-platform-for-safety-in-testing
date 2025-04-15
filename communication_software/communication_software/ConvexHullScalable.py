@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+from scipy import optimize
 from random import randint, choice
 
 class Coordinate:
@@ -8,6 +9,12 @@ class Coordinate:
         self.lat = lat
         self.lng = lng
         self.alt = alt
+
+    def __str__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
+    
+    def __repr__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
 
 def calculate_Height(area):
     """Calculates the height that the drone need to fly at to cover a certain area 
@@ -37,8 +44,10 @@ class ProximityError(Exception):
         super().__init__(message)
 
 def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
+
     if n_drones >= 2 and overlap > 0.9:
         raise ProximityError
+    
     coords = []
     for coordList in coordslist.values():
         for coord in coordList:
@@ -120,6 +129,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     step = 0.98  # reduction factor per loop
     split_offset = float("inf")
     iter = 0
+
     if n_drones >= 2:         
         while split_offset*n_drones+split_offset >= longer_extent*2*1.1:
             iter += 1
@@ -131,7 +141,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)]
         
         if square_size <= shorter_extent:
-            square_size = shorter_extent*1.3
+            square_size = shorter_extent*1.1
             split_offset = (square_size * (1 - overlap) * 2)
             drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
     
@@ -140,7 +150,21 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center]
 
     height = calculate_Height((2*square_size)**2)
-    print(height)
+
+    if height < 30:
+        height = 30
+        square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
+        split_offset = (square_size * (1 - overlap) * 2)
+        drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
+
+    if height == 99:
+        height = 99
+        square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
+        split_offset = (square_size * (1 - overlap) * 2)
+        drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
+        print("Can not ensure full coverage with same drone amount")
+
+    
     # Reduce square size 
     
     flyTo_coords = []
@@ -155,7 +179,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         long = droneOrigin.lng + delta_long
         
         flyTo_coords.append(Coordinate(lat, long, height))
-    
+
     split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
     angle = np.degrees(split_angle_radians) + 90
 
