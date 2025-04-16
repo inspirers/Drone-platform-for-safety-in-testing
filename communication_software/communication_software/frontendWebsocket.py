@@ -258,7 +258,7 @@ async def drone1_feed():
 
 @app.get("/api/v1/video_feed/drone2")
 async def drone2_feed():
-    return await wait_for_connection_or_fallback(drone_id=2, timeout=10)
+    return await wait_for_connection_or_fallback(drone_id=2, timeout=10000)
 
 @app.get("/api/v1/health")
 def health_check():

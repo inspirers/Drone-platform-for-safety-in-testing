@@ -285,7 +285,7 @@ class Communication:
         try:
             while True:
                 data = await ws.recv()
-                print(f"Received from {connection_id}: {data}")
+                #print(f"Received from {connection_id}: {data}")
                 await self.on_message(data, connection_id)
         except websockets.exceptions.ConnectionClosedError:
             print(f"Client {connection_id} disconnected.")
@@ -296,7 +296,7 @@ class Communication:
         """Processes incoming messages."""
         try:
             data = json.loads(frame)
-            print(f"Received message: {data}")
+            #print(f"Received message: {data}")
 
             msg_type = data.get("msg_type")
             if not msg_type:
@@ -417,7 +417,7 @@ class Communication:
         lat = data.get("latitude")
         long = data.get("longitude")
         altitude = data.get("altitude")
-        print(f"Handling position: lat={lat}, long={long}, altitude={altitude}")
+        #print(f"Handling position: lat={lat}, long={long}, altitude={altitude}")
         try:
             json_data_string = json.dumps(data)
             r.set(f"position_drone{connection_id}", json_data_string, ex=10)
@@ -474,8 +474,9 @@ class Communication:
                         try:
                             frame = await track.recv()
                             img = frame.to_ndarray(format="bgr24")  # Convert to OpenCV format
+                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
-                            await self.set_frame(connection_id, img)
+                            await self.set_frame(connection_id, img_rgb)
                         
                               
                         except Exception as e:
@@ -603,11 +604,11 @@ class Communication:
             yield encoded_packet
             
             
-    async def set_frame(self, connection_id: str, img: np.ndarray):
-        """
-        Encodes the image to JPEG and stores it in Redis under the key 
-        'frame_drone{connection_id}'. This method is called every time a new frame is received.
-        """
+    """async def set_frame(self, connection_id: str, img: np.ndarray):
+        
+        #Encodes the image to JPEG and stores it in Redis under the key 
+        #'frame_drone{connection_id}'. This method is called every time a new frame is received.
+    
         try:
             ret, buffer = cv2.imencode(".jpg", img)
             if not ret:
@@ -623,7 +624,29 @@ class Communication:
             # You can use r.set() or even r.setex() to expire stale frames.
             r.set(redis_key, frame_str)
         except Exception as e:
-            print(f"[DroneStream] Exception in set_frame for connection {connection_id}: {e}")
+            print(f"[DroneStream] Exception in set_frame for connection {connection_id}: {e}")"""
+            
+            
+    async def set_frame(self, connection_id: str, img: np.ndarray):
+        try:
+            # Convert the image to a buffer (JPEG format)
+            ret, buffer = cv2.imencode(".jpg", img)
+            if ret:
+                frame_str = buffer.tobytes().decode("latin1")
+
+                # Redis pipeline for storing the frame and setting TTL
+                redis_key = f"frame_drone{1}"
+                with r.pipeline() as pipe:
+                    pipe.set(redis_key, frame_str)  # Save the frame
+                    pipe.expire(redis_key, 60)     # Set expiration (60 seconds)
+                    pipe.execute()                # Execute both commands together
+
+            else:
+                print(f"Failed to encode frame for connection {connection_id}")
+
+        except Exception as e:
+            print(f"Error in set_frame: {e}")
+
             
     async def get_frame(self, peer_id):
         async with self.locks[peer_id]:
