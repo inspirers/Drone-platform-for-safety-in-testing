@@ -5,13 +5,21 @@ import websockets
 from websockets import WebSocketServerProtocol
 from communication_software.CoordinateHandler import Coordinate
 import threading
-import cv2
+import av
 import asyncio
 import redis
+import cv2
+import numpy as np
 
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceCandidate
 from aiortc.contrib.media import MediaRecorder
 from aiortc.sdp import candidate_from_sdp 
+
+
+from flask import Flask, Response
+
+app = Flask(__name__)
+
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
@@ -47,6 +55,9 @@ class Communication:
         self.coordinates = {}  # Coordinates for each client
         self.drone_coordinates = []  # List of drone coordinates
         self.client_index = 0  # Tracks which coordinate to assign next
+        self.streams = {}
+        self.locks = {}
+        self.frame = {}# Dictionary to store locks for each peer_id
         
         
         self.loop = None
@@ -55,6 +66,7 @@ class Communication:
         self.ongoing_streams = {}
         self.stream_obj = None  # Placeholder for stream display/output
         self.peer_connections = {}
+        
         
         
 
@@ -456,8 +468,33 @@ class Communication:
             @self.peer_connections[connection_id].on("track")
             def on_track(track):
                 print(f"[DroneStream] Received track: {track.kind}")
+
+                async def process_video(track):
+                    while True:
+                        try:
+                            frame = await track.recv()
+                            img = frame.to_ndarray(format="bgr24")  # Convert to OpenCV format
+            
+                            await self.set_frame(connection_id, img)
+                        
+                              
+                        except Exception as e:
+                            print(f"[DroneStream] Error processing video frame for connection {connection_id}: {e}")
+                            break
+
+                if track.kind == "video":
+                    asyncio.create_task(process_video(track))
+                                
+                   
+                
+                
+                
+                
                 
                 #Here is where we would handle the incoming media stream
+                #Stream it live in http url
+                
+                    # You can add your logic to display or process the video track here
                 
                 
                 # Record incoming media currently removed since it does not work properly
@@ -501,6 +538,11 @@ class Communication:
             print(f"[Stream Manager] Message routed to DroneStream ({connection_id}) successfully.")
         except KeyError as e:
             print(f"[Stream Manager] Error: {e}")
+            
+            
+            
+    ###FOR SAVING VIDEO STREAMS### currently not working and unused        
+            
 
     async def get_stream_by_drone_id(self, connection_id):
         """Retrieve a DroneStream by its ID."""
@@ -525,6 +567,76 @@ class Communication:
             asyncio.create_task(stream.peer_connection.close())
             del self.ongoing_streams[connection_id]
         except KeyError:
-            print(f"[Stream Manager] Error: Drone stream not found.")        
+            print(f"[Stream Manager] Error: Drone stream not found.")  
+            
+    
+    #Stream to url functions#
+    async def handle_track(self,track):
+        # Assign a unique ID or URL to each track
+        url = f"/stream/{track.kind}/{id(track)}"
+        self.streams[url] = track
+        asyncio.create_task(self.stream_video(track.kind, id(track)))
+        print(f"Streaming track at: http://localhost:5000{url}")
+
+    @app.route("/stream/<kind>/<track_id>")
+    async def stream_video(self,kind, track_id):
+        track = self.streams.get(f"/stream/{kind}/{track_id}")
+        if not track:
+            return "Track not found", 404
+        # Stream track data as an HTTP response
+        def sync_generator():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            async_gen = self.track_data_generator(track)
+            try:
+                while True:
+                    packet = loop.run_until_complete(async_gen.__anext__())
+                    yield packet.to_bytes()  # Convert packet to bytes
+            except StopAsyncIteration:
+                pass
+
+        return Response(sync_generator(), content_type="video/webm")
+
+            
+    async def track_data_generator(self, track):
+        async for encoded_packet in self.encode_track(track):
+            yield encoded_packet
+            
+            
+    async def set_frame(self, connection_id: str, img: np.ndarray):
+        """
+        Encodes the image to JPEG and stores it in Redis under the key 
+        'frame_drone{connection_id}'. This method is called every time a new frame is received.
+        """
+        try:
+            ret, buffer = cv2.imencode(".jpg", img)
+            if not ret:
+                print(f"[DroneStream] Failed to encode frame for connection {connection_id}")
+                return
+
+            # Convert the JPEG bytes to a string using an encoding 
+            # such as 'latin1' (which preserves the raw byte values)
+            frame_str = buffer.tobytes().decode("latin1")
+
+            # Store the frame in Redis, using a key unique to this connection/drone.
+            redis_key = f"frame_drone{1}"
+            # You can use r.set() or even r.setex() to expire stale frames.
+            r.set(redis_key, frame_str)
+        except Exception as e:
+            print(f"[DroneStream] Exception in set_frame for connection {connection_id}: {e}")
+            
+    async def get_frame(self, peer_id):
+        async with self.locks[peer_id]:
+            return self.frame[peer_id]
+        
+    async def get_connection_ids(self):
+        return list(self.connections.keys())
+    
+    
+    
+
+      
+            
+          
             
             

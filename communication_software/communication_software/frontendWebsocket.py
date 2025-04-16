@@ -7,8 +7,12 @@ import uvicorn
 import cv2
 import numpy as np
 from datetime import datetime
+from itertools import islice
 import redis
 import redis.exceptions
+from communication_software.Communication import Communication
+
+
 
 try:
     r = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
@@ -25,6 +29,7 @@ app = FastAPI()
 class ATOSController:
     def __init__(self):
         self.test_active = False
+        self.communication = Communication()
         self.anomalies = False
         self.drone_data = {
             1: {
@@ -49,10 +54,11 @@ atos = ATOSController()
 # Video Generation
 async def generate_drone_frames(drone_id):
     while True:
+
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(
             frame,
-            f"Drone {drone_id}",
+            f"Drone {drone_id} no stream",
             (50, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
@@ -243,16 +249,16 @@ async def flightmanager_websocket(websocket: WebSocket):
         print("Closing flightmanager websocket")
 
 
-# Video Endpoints
 @app.get("/api/v1/video_feed/drone1")
 async def drone1_feed():
-    return StreamingResponse(generate_drone_frames(1))
-
+    return StreamingResponse(
+        test_drone_frames(1),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
 
 @app.get("/api/v1/video_feed/drone2")
 async def drone2_feed():
-    return StreamingResponse(generate_drone_frames(2))
-
+    return await wait_for_connection_or_fallback(drone_id=2, timeout=10)
 
 @app.get("/api/v1/health")
 def health_check():
@@ -268,6 +274,102 @@ def run_server(atos_communicator):
         port=8000,
         reload=False,
     )
+    
+async def stream_frames(id,connection_id):
+    while True:
+
+        frame = await atos.communication.get_frame(connection_id)
+        frame = cv2.resize(frame, (640, 480))
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        print('frame sent')
+        if frame is not None:
+            cv2.putText(
+                frame,timestamp,
+                (50, 50),
+                (cv2.FONT_HERSHEY_SIMPLEX),
+                1,
+                (255, 255, 255),
+                2,
+            )
+            
+            _, buffer = cv2.imencode(".jpg", frame)
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
+            )
+        await asyncio.sleep(0.033)
+        
+
+async def wait_for_connection_or_fallback(drone_id, timeout=10):
+    start_time = asyncio.get_event_loop().time()
+    while True:
+        connection_ids = await atos.communication.get_connection_ids()
+        if connection_ids:
+            connection_id = connection_ids[(drone_id-1)]  # Use the first available connection ID
+            return StreamingResponse(
+                stream_frames(drone_id, connection_id),
+                media_type="multipart/x-mixed-replace; boundary=frame"
+            )
+        if asyncio.get_event_loop().time() - start_time >= timeout:  # Timeout condition
+            print(f"No connections found within {timeout} seconds, falling back.")
+            return StreamingResponse(
+                generate_drone_frames(drone_id),
+                media_type="multipart/x-mixed-replace; boundary=frame"
+            )
+        await asyncio.sleep(0.05)  # Check periodically
+        
+# Video Frames Generation Based on Drone ID
+async def test_drone_frames(drone_id: int):
+    """
+    Asynchronously generates JPEG-encoded video frames for a given drone.
+    This generator first attempts to retrieve a frame from Redis using
+    a key based on the drone_id. If no frame is available, it falls back to
+    generating a dummy frame.
+    """
+    redis_key = f"frame_drone{drone_id}"  # e.g. "frame_drone1", "frame_drone2", etc.
+    while True:
+        # Attempt to retrieve frame data from Redis. This assumes that somewhere
+        # your RTC or capture process is storing a frame (e.g., as raw bytes,
+        # or a base64 encoded image) under this key.
+        frame_data = await asyncio.to_thread(r.get, redis_key)
+        if frame_data:
+            # Assume frame_data is stored in a format that OpenCV can decode,
+            # for example a JPEG-encoded image as bytes.
+            # You might need to adjust this if you're using base64 or another format.
+            frame_array = np.frombuffer(frame_data.encode("latin1"), dtype=np.uint8)
+            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+            if frame is None:
+                # If decoding fails, fall back to a dummy image.
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(frame, f"Drone {drone_id}: invalid frame",
+                            (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        else:
+            # No frame found in Redis, so generate a dummy frame.
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(
+                frame,
+                f"Drone {drone_id} no frame",
+                (50, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
+        # Encode frame as JPEG
+        ret, buffer = cv2.imencode(".jpg", frame)
+        if not ret:
+            # If encoding fails, continue to try on the next iteration.
+            await asyncio.sleep(0.033)
+            continue
+
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
+        )
+        await asyncio.sleep(0.033)  # Approximately 30 frames per second
+
+
+
 
 
 if __name__ == "__main__":
