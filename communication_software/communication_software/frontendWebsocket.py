@@ -51,26 +51,6 @@ class ATOSController:
 
 atos = ATOSController()
 
-# Video Generation
-async def generate_drone_frames(drone_id):
-    while True:
-
-        frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        cv2.putText(
-            frame,
-            f"Drone {drone_id} no stream",
-            (50, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 255),
-            2,
-        )
-        _, buffer = cv2.imencode(".jpg", frame)
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
-        )
-
 
 # WebSocket Endpoints
 @app.websocket("/api/v1/ws/drone")
@@ -252,13 +232,16 @@ async def flightmanager_websocket(websocket: WebSocket):
 @app.get("/api/v1/video_feed/drone1")
 async def drone1_feed():
     return StreamingResponse(
-        test_drone_frames(1),
+        stream_drone_frames(1),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
 @app.get("/api/v1/video_feed/drone2")
 async def drone2_feed():
-    return await wait_for_connection_or_fallback(drone_id=2, timeout=10000)
+    return StreamingResponse(
+        stream_drone_frames(2),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
 
 @app.get("/api/v1/health")
 def health_check():
@@ -274,52 +257,10 @@ def run_server(atos_communicator):
         port=8000,
         reload=False,
     )
-    
-async def stream_frames(id,connection_id):
-    while True:
-
-        frame = await atos.communication.get_frame(connection_id)
-        frame = cv2.resize(frame, (640, 480))
-        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        print('frame sent')
-        if frame is not None:
-            cv2.putText(
-                frame,timestamp,
-                (50, 50),
-                (cv2.FONT_HERSHEY_SIMPLEX),
-                1,
-                (255, 255, 255),
-                2,
-            )
-            
-            _, buffer = cv2.imencode(".jpg", frame)
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
-            )
-        await asyncio.sleep(0.033)
         
-
-async def wait_for_connection_or_fallback(drone_id, timeout=10):
-    start_time = asyncio.get_event_loop().time()
-    while True:
-        connection_ids = await atos.communication.get_connection_ids()
-        if connection_ids:
-            connection_id = connection_ids[(drone_id-1)]  # Use the first available connection ID
-            return StreamingResponse(
-                stream_frames(drone_id, connection_id),
-                media_type="multipart/x-mixed-replace; boundary=frame"
-            )
-        if asyncio.get_event_loop().time() - start_time >= timeout:  # Timeout condition
-            print(f"No connections found within {timeout} seconds, falling back.")
-            return StreamingResponse(
-                generate_drone_frames(drone_id),
-                media_type="multipart/x-mixed-replace; boundary=frame"
-            )
-        await asyncio.sleep(0.05)  # Check periodically
         
 # Video Frames Generation Based on Drone ID
-async def test_drone_frames(drone_id: int):
+async def stream_drone_frames(drone_id: int):
     """
     Asynchronously generates JPEG-encoded video frames for a given drone.
     This generator first attempts to retrieve a frame from Redis using
@@ -348,7 +289,7 @@ async def test_drone_frames(drone_id: int):
             frame = np.zeros((480, 640, 3), dtype=np.uint8)
             cv2.putText(
                 frame,
-                f"Drone {drone_id} no frame",
+                f"Drone {drone_id} not connected",
                 (50, 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
