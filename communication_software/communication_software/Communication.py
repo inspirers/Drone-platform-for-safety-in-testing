@@ -604,29 +604,8 @@ class Communication:
             yield encoded_packet
             
             
-    """async def set_frame(self, connection_id: str, img: np.ndarray):
-        
-        #Encodes the image to JPEG and stores it in Redis under the key 
-        #'frame_drone{connection_id}'. This method is called every time a new frame is received.
-    
-        try:
-            ret, buffer = cv2.imencode(".jpg", img)
-            if not ret:
-                print(f"[DroneStream] Failed to encode frame for connection {connection_id}")
-                return
-
-            # Convert the JPEG bytes to a string using an encoding 
-            # such as 'latin1' (which preserves the raw byte values)
-            frame_str = buffer.tobytes().decode("latin1")
-
-            # Store the frame in Redis, using a key unique to this connection/drone.
-            redis_key = f"frame_drone{1}"
-            # You can use r.set() or even r.setex() to expire stale frames.
-            r.set(redis_key, frame_str)
-        except Exception as e:
-            print(f"[DroneStream] Exception in set_frame for connection {connection_id}: {e}")"""
             
-            
+    ##THIS IS THE FUNCTION THAT HANDLES THE VIDEO STREAM (that works)##       
     async def set_frame(self, connection_id: str, img: np.ndarray):
         try:
             # Convert the image to a buffer (JPEG format)
@@ -635,7 +614,8 @@ class Communication:
                 frame_str = buffer.tobytes().decode("latin1")
 
                 # Redis pipeline for storing the frame and setting TTL
-                redis_key = f"frame_drone{1}"
+                drone_number = await self.get_connection_id_number(connection_id)
+                redis_key = f"frame_drone{drone_number}"
                 with r.pipeline() as pipe:
                     pipe.set(redis_key, frame_str)  # Save the frame
                     pipe.expire(redis_key, 60)     # Set expiration (60 seconds)
@@ -646,14 +626,11 @@ class Communication:
 
         except Exception as e:
             print(f"Error in set_frame: {e}")
-
-            
-    async def get_frame(self, peer_id):
-        async with self.locks[peer_id]:
-            return self.frame[peer_id]
         
-    async def get_connection_ids(self):
-        return list(self.connections.keys())
+    async def get_connection_id_number(self,connection_id):
+        key_list = list(self.connections.keys())    
+        connection_id_number = key_list.index(connection_id) + 1
+        return (connection_id_number)
     
     
     
