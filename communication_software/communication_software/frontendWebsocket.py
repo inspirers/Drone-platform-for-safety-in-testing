@@ -267,16 +267,12 @@ async def stream_drone_frames(drone_id: int):
     a key based on the drone_id. If no frame is available, it falls back to
     generating a dummy frame.
     """
-    redis_key = f"frame_drone{drone_id}"  # e.g. "frame_drone1", "frame_drone2", etc.
+    redis_key = f"frame_drone{drone_id}" 
     while True:
-        # Attempt to retrieve frame data from Redis. This assumes that somewhere
-        # your RTC or capture process is storing a frame (e.g., as raw bytes,
-        # or a base64 encoded image) under this key.
+        # RTC or capture process is storing a frame in Redis.
         frame_data = await asyncio.to_thread(r.get, redis_key)
         if frame_data:
-            # Assume frame_data is stored in a format that OpenCV can decode,
-            # for example a JPEG-encoded image as bytes.
-            # You might need to adjust this if you're using base64 or another format.
+            # Might need to adjust this if you're using base64 or another format.
             frame_array = np.frombuffer(frame_data.encode("latin1"), dtype=np.uint8)
             frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
             if frame is None:
