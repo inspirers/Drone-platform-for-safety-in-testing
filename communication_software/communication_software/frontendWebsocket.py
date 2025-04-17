@@ -261,12 +261,7 @@ def run_server(atos_communicator):
         
 # Video Frames Generation Based on Drone ID
 async def stream_drone_frames(drone_id: int):
-    """
-    Asynchronously generates JPEG-encoded video frames for a given drone.
-    This generator first attempts to retrieve a frame from Redis using
-    a key based on the drone_id. If no frame is available, it falls back to
-    generating a dummy frame.
-    """
+    
     redis_key = f"frame_drone{drone_id}" 
     while True:
         # RTC or capture process is storing a frame in Redis.
