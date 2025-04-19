@@ -10,12 +10,6 @@ class Coordinate:
         self.lng = lng
         self.alt = alt
 
-    def __str__(self):
-        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
-    
-    def __repr__(self):
-        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
-
 def calculate_Height(area):
     """Calculates the height that the drone need to fly at to cover a certain area 
     Args:
@@ -31,7 +25,7 @@ def calculate_Height(area):
     radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
     height = radius / np.tan(theta) 
     height = round(height) #no need for decimals
-    if height < 100: #swedish regulation limits the drone flying height to below 120 m
+    if height < 99: #swedish regulation limits the drone flying height to below 120 m
         return height 
     else:
         print("The height exceeds swedish regulations")
@@ -47,7 +41,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
     if n_drones >= 2 and overlap > 0.9:
         raise ProximityError
-    
     coords = []
     for coordList in coordslist.values():
         for coord in coordList:
@@ -111,7 +104,41 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         hull = ConvexHull(points)
         return [points[i] for i in hull.vertices]
 
-    rect = min_area_rectangle_of_hull(compute_convex_hull(coords))
+    def are_colinear(points, tol=1e-9):
+        if len(points) < 3:
+            return True
+
+        x0, y0 = points[0]
+        x1, y1 = points[1]
+        for x, y in points[2:]:
+            cp = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)
+            if abs(cp) > tol:
+                return False
+        return True
+
+    if are_colinear(coords):
+        rect = Rectangle()
+        rect.center = np.mean(coords, axis=0)
+    
+        sorted_coords = sorted(coords, key=lambda p: p[0])  # For sorting by x-coordinate
+    
+        start_coord = sorted_coords[0]
+        end_coord = sorted_coords[-1]
+
+        direction = (end_coord) - rect.center
+
+        U0 = normalize(direction)
+        U1 = perp(U0) 
+
+        extent_long = np.linalg.norm(direction)
+        rect.extent[1] = extent_long/2
+        rect.extent[0] = extent_long
+        rect.axis[0] = U0
+        rect.axis[1] = U1
+        rect.area = 4*rect.extent[0]*rect.extent[1]
+    else:
+        rect = min_area_rectangle_of_hull(compute_convex_hull(coords))
+
     axis = np.array(rect.axis)
     center = np.array(rect.center)
     extent = np.array(rect.extent)
@@ -162,11 +189,8 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
         split_offset = (square_size * (1 - overlap) * 2)
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
-        print("Can not ensure full coverage with same drone amount")
+        print("Can not ensure full coverage with current drone amount")
 
-    
-    # Reduce square size 
-    
     flyTo_coords = []
     for drone_center in drone_centers:
         drone_loc_x = drone_center[0]
@@ -184,5 +208,3 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     angle = np.degrees(split_angle_radians) + 90
 
     return flyTo_coords, angle
-
-

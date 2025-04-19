@@ -104,7 +104,41 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         hull = ConvexHull(points)
         return [points[i] for i in hull.vertices]
 
-    rect = min_area_rectangle_of_hull(compute_convex_hull(coords))
+    def are_colinear(points, tol=1e-9):
+        if len(points) < 3:
+            return True
+
+        x0, y0 = points[0]
+        x1, y1 = points[1]
+        for x, y in points[2:]:
+            cp = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)
+            if abs(cp) > tol:
+                return False
+        return True
+
+    if are_colinear(coords):
+        rect = Rectangle()
+        rect.center = np.mean(coords, axis=0)
+    
+        sorted_coords = sorted(coords, key=lambda p: p[0])  # For sorting by x-coordinate
+    
+        start_coord = sorted_coords[0]
+        end_coord = sorted_coords[-1]
+
+        direction = (end_coord) - rect.center
+
+        U0 = normalize(direction)
+        U1 = perp(U0) 
+
+        extent_long = np.linalg.norm(direction)
+        rect.extent[1] = extent_long/2
+        rect.extent[0] = extent_long
+        rect.axis[0] = U0
+        rect.axis[1] = U1
+        rect.area = 4*rect.extent[0]*rect.extent[1]
+    else:
+        rect = min_area_rectangle_of_hull(compute_convex_hull(coords))
+
     axis = np.array(rect.axis)
     center = np.array(rect.center)
     extent = np.array(rect.extent)
@@ -155,7 +189,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
         split_offset = (square_size * (1 - overlap) * 2)
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
-        print("Can not ensure full coverage with same drone amount")
+        print("Can not ensure full coverage with current drone amount")
 
     
     # Reduce square size 
@@ -177,11 +211,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     plt.figure(figsize=(8, 8))
     plt.scatter(coords[:, 0], coords[:, 1], color='blue', label='Data Points')
 
-    # Convex Hull
-    hull = ConvexHull(coords)
-    for simplex in hull.simplices:
-        plt.plot(coords[simplex, 0], coords[simplex, 1], 'k--', label='Convex Hull' if simplex[0] == 0 else "")
-        
     # Bounding Rectangle
     rect_corners = np.array([  
         center + extent[0] * axis[0] + extent[1] * axis[1],
@@ -218,32 +247,11 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
     return flyTo_coords, angle
 
-# Example usage
-def generate_trajectory(start_x, start_y, steps=10, step_size=3):
-    """Generates a vehicle t§rajectory with smooth movements."""
-    trajectory = [Coordinate(start_x, start_y, 0)]
-    
-    for _ in range(steps - 1):
-        # Move in a random direction with small increments
-        delta_x = choice([-step_size, 0, step_size])
-        delta_y = choice([-step_size, 0, step_size])
-        
-        new_x = max(0, min(100, trajectory[-1].lat + delta_x))
-        new_y = max(0, min(100, trajectory[-1].lng + delta_y))
-        
-        trajectory.append(Coordinate(new_x, new_y, 0))
-    
-    return trajectory
-
-# Generate multiple vehicle trajectories
-coordslist = {
-    "Vehicle_1": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_2": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_3": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_4": generate_trajectory(randint(0, 100), randint(0, 100), steps=10),
-    "Vehicle_5": generate_trajectory(randint(0, 100), randint(0, 100), steps=10)
+# Example usage, colinear test
+trajectories = {
+    "vehicle_1": [Coordinate(0, 0), Coordinate(10, 10), Coordinate(20, 20), Coordinate(0, 0), Coordinate(30, 30), Coordinate(50, 50)]
 }
 
 droneOrigin = Coordinate(0, 0, 0)
-flyto = getDronesLoc(coordslist, droneOrigin)
+flyto = getDronesLoc(trajectories, droneOrigin)
 
