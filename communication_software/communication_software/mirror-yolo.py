@@ -131,6 +131,23 @@ while True:
         stop_event.set()
         break
 
+async def set_frame(self: str, img: np.ndarray): # tar en image frame
+        try:
+            # Convert the image to a buffer (JPEG format)
+            ret, buffer = cv2.imencode(".jpg", img)
+            if ret:
+                frame_str = buffer.tobytes().decode("latin1")
+                # Redis pipeline for storing the frame and setting TTL
+                redis_key = f"frame_drone_merged"
+                with r.pipeline() as pipe:
+                    pipe.set(redis_key, frame_str)  # Save the frame
+                    pipe.expire(redis_key, 60)     # Set expiration (60 seconds)
+                    pipe.execute()                # Execute both commands together
+            else:
+                print(f"Failed to encode merged frames")
+        except Exception as e:
+            print(f"Error in set_frame: {e}")
+
 # ---- STÄNG NER PROGRAMMET ----
 print("[INFO] cleaning up...")
 cv2.destroyAllWindows()

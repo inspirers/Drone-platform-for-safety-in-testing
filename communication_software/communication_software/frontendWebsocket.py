@@ -10,7 +10,7 @@ from datetime import datetime
 from itertools import islice
 import redis
 import redis.exceptions
-from communication_software.Communication import Communication
+import Communication
 
 
 
@@ -243,6 +243,13 @@ async def drone2_feed():
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
+@app.get("/api/v1/video_feed/merged")
+async def drone_merged_feed():
+    return StreamingResponse(
+        stream_drone_frames('_merged'),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
 @app.get("/api/v1/health")
 def health_check():
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
@@ -260,7 +267,7 @@ def run_server(atos_communicator):
         
         
 # Video Frames Generation Based on Drone ID
-async def stream_drone_frames(drone_id: int):
+async def stream_drone_frames(drone_id):
     
     redis_key = f"frame_drone{drone_id}" 
     while True:
@@ -300,8 +307,45 @@ async def stream_drone_frames(drone_id: int):
         )
         await asyncio.sleep(0.033)  # Approximately 30 frames per second
 
+async def stream_drone_frames_merged():
+    
+    redis_key = "frame_drone_merged"
+    while True:
+        # RTC or capture process is storing a frame in Redis.
+        frame_data = await asyncio.to_thread(r.get, redis_key)
+        if frame_data:
+            # Might need to adjust this if you're using base64 or another format.
+            frame_array = np.frombuffer(frame_data.encode("latin1"), dtype=np.uint8)
+            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+            if frame is None:
+                # If decoding fails, fall back to a dummy image.
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(frame, f"frame_drone_merged: invalid frame",
+                            (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        else:
+            # No frame found in Redis, so generate a dummy frame.
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(
+                frame,
+                f"frame_drone_merged not connected",
+                (50, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
+        # Encode frame as JPEG
+        ret, buffer = cv2.imencode(".jpg", frame)
+        if not ret:
+            # If encoding fails, continue to try on the next iteration.
+            await asyncio.sleep(0.033)
+            continue
 
-# async def stream_drone_frames_merged(drone_id: int)
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
+        )
+        await asyncio.sleep(0.033)  # Approximately 30 frames per second
 
 
 if __name__ == "__main__":

@@ -3,13 +3,14 @@ import json
 import redis.exceptions
 import websockets
 from websockets import WebSocketServerProtocol
-from communication_software.CoordinateHandler import Coordinate
+from CoordinateHandler import Coordinate
 import threading
 import av
 import asyncio
 import redis
 import cv2
 import numpy as np
+import MergeVideoStreams
 
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceCandidate
 from aiortc.contrib.media import MediaRecorder
@@ -30,7 +31,6 @@ except redis.exceptions.ConnectionError as e:
     exit()
 
 COMMAND_CHANNEL = "drone_commands"
-
 
 from aiortc import RTCConfiguration, RTCIceServer
 
@@ -424,8 +424,6 @@ class Communication:
         except (TypeError, redis.exceptions.RedisError) as e:
             print(f"Error processing position data: {e}")
             
-        
-        
     ###WEBBRTC###
     
     async def send_message(self, connection_id, message):
@@ -528,8 +526,6 @@ class Communication:
             print(f"[DroneStream] Created RTCPeerConnection: {self.peer_connections[connection_id]}")
         except Exception as e:
             print(f"[DroneStream] Failed to create PeerConnection: {e}")
-            
-
 
     async def handle_incoming_webrtc_msg(self, connection_id, message):
         """Route incoming WebRTC messages to the appropriate DroneStream."""
@@ -543,8 +539,7 @@ class Communication:
             
             
     ###FOR SAVING VIDEO STREAMS### currently not working and unused        
-            
-
+        
     async def get_stream_by_drone_id(self, connection_id):
         """Retrieve a DroneStream by its ID."""
         if connection_id in self.ongoing_streams:
@@ -603,8 +598,6 @@ class Communication:
         async for encoded_packet in self.encode_track(track):
             yield encoded_packet
             
-            
-            
     ##THIS IS THE FUNCTION THAT HANDLES THE VIDEO STREAM (that works)##       
     async def set_frame(self, connection_id: str, img: np.ndarray):
         try:
@@ -615,6 +608,10 @@ class Communication:
 
                 # Redis pipeline for storing the frame and setting TTL
                 drone_number = await self.get_connection_id_number(connection_id)
+
+                if drone_number >= 2:
+                    await MergeVideoStreams.main()
+
                 redis_key = f"frame_drone{drone_number}"
                 with r.pipeline() as pipe:
                     pipe.set(redis_key, frame_str)  # Save the frame
@@ -632,8 +629,8 @@ class Communication:
         connection_id_number = key_list.index(connection_id) + 1
         return (connection_id_number)
     
-    
-    
+### Har vi två peer connections? -> merged stream
+
 
       
             
