@@ -301,7 +301,7 @@ async def stream_drone_frames(drone_id: int):
         await asyncio.sleep(0.033)  # Approximately 30 frames per second
 
 
-
+# async def stream_drone_frames_merged(drone_id: int)
 
 
 if __name__ == "__main__":
