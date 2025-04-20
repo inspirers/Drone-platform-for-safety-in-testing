@@ -118,7 +118,6 @@ async def merge_stream(drone_ids):
             left = await asyncio.to_thread(left_queue.get)
             right = await asyncio.to_thread(right_queue.get)
 
-
             if left is None or right is None:   
                 print("[INFO] End of video stream reached.")
                 stop_event.set()

@@ -628,8 +628,6 @@ class Communication:
         key_list = list(self.connections.keys())    
         connection_id_number = key_list.index(connection_id) + 1
         return (connection_id_number)
-    
-### Har vi två peer connections? -> merged stream
 
 
       
