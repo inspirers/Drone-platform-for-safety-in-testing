@@ -6,7 +6,7 @@ import time
 import threading
 from queue import Queue
 from ultralytics import YOLO
-import supervision as sv
+import supervision.detection.core as sv
 from annotator import Annotator
 import coordinateMapping  
 import frontendWebsocket
