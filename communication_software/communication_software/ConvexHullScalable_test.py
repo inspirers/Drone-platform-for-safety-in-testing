@@ -244,7 +244,9 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     plt.axis('equal')
     plt.show()
 
-    angle = round(np.arctan2(angle_axis[1], angle_axis[0]))
+    angle = np.arctan2(angle_axis[1], angle_axis[0])
+    angle = np.degrees(angle)
+    print(angle)
 
     return flyTo_coords, angle
 
