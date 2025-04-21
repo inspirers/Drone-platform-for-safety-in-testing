@@ -54,7 +54,6 @@ services:
           cpus: "0.05"
           memory: 128M
   frontend:
-    image: nginx:latest
     container_name: frontend
     build: 
       context: ../frontend
