@@ -1,23 +1,29 @@
 package com.dji.sdk.sample;
 
+import android.os.HandlerThread;
 import android.util.Log;
-
+import org.webrtc.IceCandidate; // WebRTC ICE Candidate
+import org.json.JSONObject; // JSON handling
+import org.json.JSONException; // JSON error handling
 import androidx.annotation.Nullable;
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Semaphore;
-
 import dev.gustavoavila.websocketclient.WebSocketClient;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
-/**
- * Handles a websocket connection by implementing the library.
- * The class remembers two things, the last bytes, and the last string it received. These are
- * accessible through the methods getLastBytesReceived() and getLastStringReceived(). There is
- * also a semaphore which can be used to to read when a new string is used.
- * TODO: Write a better way of implementing the notification, probably based on the
- * different types of messages.
- */
+
+import org.webrtc.CapturerObserver;
+import org.webrtc.NV12Buffer;
+import org.webrtc.SurfaceTextureHelper;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoFrame;
+import com.dji.sdk.sample.DJIVideoCapturer;  // Import DJIVideoCapturer (your custom implementation)
+
+
+
 public class WebsocketClientHandler {
     private static WebsocketClientHandler clientHandler = null;
     private URI uri = null;
@@ -28,52 +34,105 @@ public class WebsocketClientHandler {
     private byte[] lastBytesReceived = null;
     public static Semaphore new_string = new Semaphore(0);
     public static Semaphore status_update = new Semaphore(0);
+    private final Context context;
+    private WSPosition wsPositionRunnable;
+    private Thread wsPositionThread;
+    private WebRTCClient webRTCClient; 
+    private DJIVideoCapturer DJIVideoCapturer; 
+    private WebRTCMediaOptions webRTCMediaOptions;  
+   
+    
+
 
     /**
      * Get the active instance of the WebsocketClientHandler.
      * @return Returns null if the client hasn't been created, returns
      * the WebsocketClientHandler if it has been instantiated
      */
+
     @Nullable
     public static WebsocketClientHandler getInstance(){
         return clientHandler;
     }
 
-    /**
-     * Check if an instance has been created
-     * @return True if an instance has been created, false if nor
-     */
     public static boolean isInstanceCreated(){
         return clientHandler != null;
     }
 
-    /**
-     * Create an instance of the class. Overwrites the current instance if one exists.
-     * @param uri The URI of the server
-     * @return The instance of WebsocketClient
-     */
-    public static WebsocketClientHandler createInstance(URI uri){
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler createInstance(Context context, URI uri){
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
-    private WebsocketClientHandler(URI uri){
+    public WebSocketClient getWebSocketClient() {
+        return webSocketClient;
+    }
+
+    
+
+    private WebsocketClientHandler(Context context, URI uri){
         this.uri = uri;
-        //Use the webSocketClient implementation in TODO: Link
-        //These methods are called by the package, rather than by our code.
+        this.context = context;
         webSocketClient = new WebSocketClient(uri) {
             @Override
             public void onOpen() {
-                Log.d(TAG, "New connection opened on URI" + getUri());
+                Log.d(TAG, "New connection opened on URI " + getUri());
                 connected = true;
-                WebsocketClientHandler.status_update.release();
+
+                // Run UI-related logic on the main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (webRTCClient == null) {
+                        try {
+                            Log.d(TAG, "Initializing WebRTCClient...");
+                            VideoCapturer videoCapturer = new DJIVideoCapturer("DJI Mavic Enterprise 2");
+                            WebRTCMediaOptions mediaOptions = new WebRTCMediaOptions();
+                            webRTCClient = new WebRTCClient(context, videoCapturer, mediaOptions);
+                            Log.d(TAG, "WebRTCClient initialized successfully.");
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error initializing WebRTCClient: " + e.getMessage(), e);
+                        }
+                    } else {
+                        Log.w(TAG, "WebRTCClient already initialized.");
+                    }
+                    startPositionSending(); // Ensure position sending starts properly
+                    WebsocketClientHandler.status_update.release();
+                });
             }
+
+
+
 
             @Override
             public void onTextReceived(String message) {
-                Log.d(TAG, "Received: " + message);
-                lastStringReceived = message;
-                new_string.release();
+                try {
+                    JSONObject jsonMessage = new JSONObject(message);
+                    String type = jsonMessage.getString("msg_type");
+                    // FlightManager flightManager = FlightManager.getFlightManager();
+
+                    if (type.equals("Coordinate_request")) {
+                        Log.d(TAG, "Received: " + message);
+                        lastStringReceived = message;
+                        new_string.release();
+                    } else if (type.equals("flight_arm")) {
+                        Log.d(TAG, "Attempting to take off");
+                    FlightManager flightManager = FlightManager.getFlightManager();
+                        flightManager.onArm();
+                    } else if (type.equals("offer") || type.equals("candidate") || type.equals("answer")) {
+                        webRTCClient.handleWebRTCMessage(jsonMessage);
+                    } else if (type.equals("flight_take_off")) {
+                        Log.d(TAG, "Attempting to take off");
+                    FlightManager flightManager = FlightManager.getFlightManager();
+                        flightManager.startWaypointMission();
+                    } else if (type.equals("flight_return_to_home")) {
+                        Log.d(TAG, "Attempting to return to home");
+                    FlightManager flightManager = FlightManager.getFlightManager();
+                        flightManager.goingHome();
+                    } else {
+                        Log.w(TAG, "Unhandled message type: " + type);
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Failed to parse message: " + e.getMessage());
+                }
             }
 
             @Override
@@ -95,7 +154,7 @@ public class WebsocketClientHandler {
             @Override
             public void onException(Exception e) {
                 Log.e(TAG, e.toString());
-                if (e.getClass() == IOException.class){
+                if (e instanceof IOException){
                     closeConnection();
                 }
             }
@@ -104,89 +163,63 @@ public class WebsocketClientHandler {
             public void onCloseReceived(int reason, String description) {
                 Log.d(TAG, String.format("Closed with code %d, %s", reason, description));
                 connected = false;
+                stopPositionSending();
+                if (webRTCClient != null) {
+                    webRTCClient.dispose();
+                    webRTCClient = null; // Nullify to prevent further usage
+                    Log.d(TAG, "WebRTCClient disposed and nullified.");
+                }
                 WebsocketClientHandler.status_update.release();
-            }
+        }
+
         };
         webSocketClient.setConnectTimeout(15000);
-        //As the client will send more than it will receive, it will stay open for an hour
         webSocketClient.setReadTimeout(30000);
         webSocketClient.enableAutomaticReconnection(1000);
     }
 
-    /**
-     * @return The URI of the server
-     */
     public URI getUri() {
         return uri;
     }
 
-    /**
-     * Creates a new WebsocketHandler with the specified URI.
-     * If a connection is open on the old URI, it is closed.
-     * Note that all received data is lost.
-     * @param uri The URI for the new Client
-     */
-    public static WebsocketClientHandler resetClientHandler(URI uri) {
-        clientHandler = new WebsocketClientHandler(uri);
+    public static WebsocketClientHandler resetClientHandler(Context context, URI uri) {
+        clientHandler = new WebsocketClientHandler(context, uri);
         return clientHandler;
     }
 
-    /**
-     * Check whether the websocket is connected or not.
-     * @return True if the socket is connected, false if not
-     */
     public boolean isConnected() {
         return connected;
     }
 
-    /**
-     * Send a String message to the server.
-     * @param message The string to send to the client
-     * @return True if sent, false if the client is not connected
-     */
     public boolean send(String message){
         Log.w(TAG, "Sending...");
         if (isConnected()){
             webSocketClient.send(message);
             return true;
         } else{
+            Log.e(TAG, "WebSocket is not connected.");
             return false;
         }
     }
 
-    /**
-     * Send a byte[] of data to the server.
-     * @param data The data to send to the client
-     * @return True if sent, false if the client is not connected
-     */
     public boolean send(byte[] data){
         if (isConnected()){
             webSocketClient.send(data);
             return true;
         } else{
+            Log.e(TAG, "WebSocket is not connected.");
             return false;
         }
     }
 
-    /**
-     *
-     * @return The last bytes that were received by the client
-     */
     public byte[] getLastBytesReceived() {
         return lastBytesReceived;
     }
 
-    /**
-     *
-     * @return The last String that were received by the client
-     */
     public String getLastStringReceived() {
         return lastStringReceived;
     }
 
-    /**
-     * Close the websocket connection.
-     */
     public void closeConnection(){
         if (isConnected()){
             webSocketClient.close(1, 1001, "Connection closed by app");
@@ -194,19 +227,54 @@ public class WebsocketClientHandler {
         }
     }
 
-    /**
-     *
-     * @return True if the client was not connected but existed, otherwise false
-     */
     public boolean connect(){
         if (isConnected()){
             return false;
         }
         if (webSocketClient != null){
             webSocketClient.connect();
+            WSPosition WSPosition = new WSPosition(webSocketClient);
+            Thread thread = new Thread(WSPosition);
+            thread.start();
             return true;
         }
         return false;
-
     }
+
+    private HandlerThread wsPositionHandlerThread;
+    private Handler wsPositionHandler;
+    
+    private synchronized void startPositionSending() {
+        if (wsPositionHandlerThread == null || !wsPositionHandlerThread.isAlive()) {
+            Log.i(TAG, "Starting position sending HandlerThread...");
+            wsPositionHandlerThread = new HandlerThread("WebSocketPositionSender");
+            wsPositionHandlerThread.start();
+            wsPositionHandler = new Handler(wsPositionHandlerThread.getLooper());
+            wsPositionRunnable = new WSPosition(this.webSocketClient);
+    
+            // Run WSPosition logic in the HandlerThread
+            wsPositionHandler.post(wsPositionRunnable);
+        } else {
+            Log.w(TAG, "Position sending HandlerThread already running.");
+        }
+    }
+    
+    private synchronized void stopPositionSending() {
+        if (wsPositionHandlerThread != null) {
+            Log.i(TAG, "Stopping position sending HandlerThread...");
+            wsPositionHandlerThread.quitSafely(); // Quit the HandlerThread gracefully
+            try {
+                wsPositionHandlerThread.join(); // Wait for it to finish
+                Log.i(TAG, "HandlerThread stopped.");
+            } catch (InterruptedException e) {
+                Log.w(TAG, "Interrupted while stopping HandlerThread.");
+                Thread.currentThread().interrupt();
+            }
+            wsPositionRunnable = null; // Clear references
+            wsPositionHandlerThread = null;
+            wsPositionHandler = null;
+        }
+    }
+
 }
+
