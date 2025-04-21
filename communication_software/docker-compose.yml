@@ -21,6 +21,9 @@ services:
       - ENV_LATITUDE= 57.68819679236606
       - ENV_LONGITUDE= 11.98050450974414
       - DEBUG_MODE=True
+    depends_on:
+      - atos
+      - redis
   atos:
     image: astazero/atos_docker_env:latest
     container_name: atos
@@ -39,6 +42,8 @@ services:
     volumes: 
       - .astazero/ATOS/:/root/.astazero/ATOS/
     command: bash -c "source /root/atos_ws/install/setup.sh ; ros2 launch atos launch_basic.py insecure:=True"
+    depends_on:
+      - isoObject
 
   isoObject:
     image: astazero/iso_object_demo:latest
@@ -71,6 +76,8 @@ services:
       # dockerfile: ../frontend/Dockerfile
     networks:
       - atos-net
+    depends_on:
+      - redis
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
