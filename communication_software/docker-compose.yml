@@ -60,14 +60,6 @@ services:
       - atos-net
     ports:
       - 8001:80
-
-  nginx-rtmp:
-    ports:
-      - 1935:1935
-    container_name: nginx-rtmp
-    image: tiangolo/nginx-rtmp
-    networks:
-      - atos-net
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
