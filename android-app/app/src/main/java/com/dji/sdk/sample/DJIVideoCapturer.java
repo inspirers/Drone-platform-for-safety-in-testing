@@ -9,6 +9,10 @@ import org.webrtc.NV12Buffer;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoFrame;
+import org.webrtc.JavaI420Buffer;  // For creating the I420 buffer
+import java.nio.ByteBuffer;       // For handling raw video buffer
+import java.util.concurrent.TimeUnit;  // For timestamp calculations
+
 
 
 import android.content.Context;
@@ -50,28 +54,47 @@ public class DJIVideoCapturer implements VideoCapturer {
             public void onYuvDataReceived(MediaFormat mediaFormat, ByteBuffer videoBuffer, int dataSize, int width, int height) {
                 if (videoBuffer != null) {
                     try {
-                        // Convert to NV12Buffer and create a VideoFrame
                         long timestampNS = TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime());
-                        NV12Buffer buffer = new NV12Buffer(
-                                width,
-                                height,
-                                mediaFormat.getInteger(MediaFormat.KEY_STRIDE),
-                                mediaFormat.getInteger(MediaFormat.KEY_SLICE_HEIGHT),
-                                videoBuffer,
-                                null
-                        );
-                        VideoFrame videoFrame = new VideoFrame(buffer, 0, timestampNS);
-    
-                        // Feed the video frame to all observers
+                        
+                        // Extract NV12 data from the ByteBuffer
+                        byte[] nv12Data = new byte[dataSize];
+                        videoBuffer.get(nv12Data); // Get the NV12 data
+
+                        // Allocate an I420 buffer
+                        JavaI420Buffer i420Buffer = JavaI420Buffer.allocate(width, height);
+
+                        int ySize = width * height; // Full Y plane size
+                        int uvSize = (width / 2) * (height / 2); // Size of U/V chrominance planes
+
+                        // Copy Y plane from NV12 to I420 buffer
+                        i420Buffer.getDataY().put(nv12Data, 0, ySize);
+
+                        // Deinterleave NV12 UV plane into separate U and V planes in I420 format
+                        ByteBuffer uBuffer = i420Buffer.getDataU();
+                        ByteBuffer vBuffer = i420Buffer.getDataV();
+
+                        for (int i = 0; i < uvSize; i++) {
+                            uBuffer.put(nv12Data[ySize + 2 * i]);       // U data
+                            vBuffer.put(nv12Data[ySize + 2 * i + 1]);   // V data
+                        }
+
+                        // Create a WebRTC VideoFrame with the converted I420 buffer
+                        VideoFrame videoFrame = new VideoFrame(i420Buffer, 0, timestampNS);
+
+                        // Feed the converted YUV420p frame to all observers
                         for (CapturerObserver obs : observers) {
                             obs.onFrameCaptured(videoFrame);
                         }
+
+                        // Release the frame after processing
                         videoFrame.release();
+
                     } catch (Exception e) {
-                        e.printStackTrace(); // Improved error logging can be added here
+                        e.printStackTrace(); // Enhanced error logging can be added
                     }
                 }
             }
+
         });
     
         // Handle video data listener for specific drone models
