@@ -18,8 +18,8 @@ services:
       - 8765:8765/udp  # WebRTC signaling port
     environment: 
       - ENV_ALTITUDE= 15 # does not matter probably
-      - ENV_LATITUDE= 57.688903266630945
-      - ENV_LONGITUDE= 11.97940812478253
+      - ENV_LATITUDE= 57.68819679236606
+      - ENV_LONGITUDE= 11.98050450974414
       - DEBUG_MODE=True
   atos:
     image: astazero/atos_docker_env:latest

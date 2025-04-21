@@ -150,8 +150,10 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
     if extent[0] > extent[1]:
         split_axis = axis[0]
+        angle_axis = axis[1]
     else:
         split_axis = axis[1]
+        angle_axis = axis[0]
     
     step = 0.98  # reduction factor per loop
     split_offset = float("inf")
@@ -204,7 +206,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         
         flyTo_coords.append(Coordinate(lat, long, height))
 
-    split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
-    angle = np.degrees(split_angle_radians) + 90
+    angle = round(np.arctan2(angle_axis[1], angle_axis[0]))
 
     return flyTo_coords, angle
