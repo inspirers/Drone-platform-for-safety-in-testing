@@ -80,6 +80,7 @@
                         <div class="status-card mb-3">
                             <h5>Drone 1 Status</h5>
                             <div>Altitude: <span id="alt1">--</span> m</div>
+                            <div>Yaw: <span id="yaw1">--</span> m</div>
                             <div>Speed: <span id="speed1">--</span> m/s</div>
                             <div>Battery: <span id="battery1">--</span>%</div>
 
@@ -95,6 +96,7 @@
                         <div class="status-card mb-3">
                             <h5>Drone 2 Status</h5>
                             <div>Altitude: <span id="alt2">--</span> m</div>
+                            <div>Yaw: <span id="yaw2">--</span> m</div>
                             <div>Speed: <span id="speed2">--</span> m/s</div>
                             <div>Battery: <span id="battery2">--</span>%</div>
                             <div class="drone-controls mt-2">
@@ -190,6 +192,7 @@
             document.getElementById(`alt${data.drone_id}`).textContent = data.alt.toFixed(1);
             document.getElementById(`speed${data.drone_id}`).textContent = data.speed.toFixed(1);
             document.getElementById(`battery${data.drone_id}`).textContent = data.battery.toFixed(1);
+            document.getElementById(`yaw${data.drone_id}`).textContent = data.yaw.toFixed(1);
 
             // Update map marker
             markers[data.drone_id].setLatLng([data.lat, data.lng]);

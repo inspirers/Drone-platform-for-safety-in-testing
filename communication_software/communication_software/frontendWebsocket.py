@@ -85,8 +85,9 @@ async def drone_websocket(websocket: WebSocket):
                         alt = data_dict.get("altitude")
                         speed = data_dict.get("speed")
                         batteryPercent = data_dict.get("batteryPercent")
+                        yaw = data_dict.get("yaw")
 
-                        if lat is None or lng is None or alt is None or speed is None or batteryPercent is None:
+                        if lat is None or lng is None or alt is None or speed is None or batteryPercent or yaw is None:
                             print(f"Warning: Missing position, battery or speed data fields in {redis_key}. Found: {data_dict}")
                             if drone_id in atos.drone_data:
                                 processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]
@@ -103,7 +104,8 @@ async def drone_websocket(websocket: WebSocket):
                                 "lng": lng,
                                 "alt": alt,
                                 "speed": speed,
-                                "battery": batteryPercent 
+                                "battery": batteryPercent,
+                                "yaw": yaw
                             }
                         )
                         processed_data_for_cycle[drone_id] = atos.drone_data[drone_id]

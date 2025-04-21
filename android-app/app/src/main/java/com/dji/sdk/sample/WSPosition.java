@@ -54,6 +54,7 @@ class WSPosition implements Runnable {
                             double latitude = location.getLatitude();
                             double longitude = location.getLongitude();
                             float altitude = location.getAltitude(); // You might want altitude too
+                            double yaw = currentState.getAttitude().yaw;
                             batteryPercent = batteryState.getChargeRemainingInPercent();
                             // Speed (NED frame: North, East, Down)
                             float velocityX = currentState.getVelocityX(); // Speed towards North (m/s)
@@ -66,8 +67,8 @@ class WSPosition implements Runnable {
                             }
                             // Format the data (e.g., as JSON)
                             String message = String.format(Locale.US,
-                                    "{\"msg_type\": \"Position\",\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f, \"speed\": %.2f, \"batteryPercent\": %d}",
-                                    latitude, longitude, altitude, horizontalSpeed, batteryPercent);
+                                    "{\"msg_type\": \"Position\",\"latitude\": %.8f, \"longitude\": %.8f, \"altitude\": %.2f, \"speed\": %.2f, \"batteryPercent\": %d, \"yaw\": %.8f}",
+                                    latitude, longitude, altitude, horizontalSpeed, batteryPercent, yaw);
 
                             // Send the data via WebSocket
                             Log.d(TAG, "Sending position: " + message);
