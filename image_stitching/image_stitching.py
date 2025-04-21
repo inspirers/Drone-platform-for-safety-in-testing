@@ -13,6 +13,8 @@ import asyncio
 # Global YOLO model (för att inte skapa den varje gång)
 model = YOLO("best.pt")
 
+FRAME_RATE=1/10
+
 # Redis connection (skapa en Redis-klient om den inte finns)
 r = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
 
@@ -119,13 +121,13 @@ async def stream_drone_frames(drone_id: int):
             # Om kodning misslyckas, logga och hoppa över (yield None eller vänta?)
             # Yielding None might be better handled by the consumer
             print(f"[ERROR] Failed to encode frame to JPEG for drone {drone_id}")
-            await asyncio.sleep(0.033) # Vänta lite innan nästa försök
+            await asyncio.sleep(FRAME_RATE) # Vänta lite innan nästa försök
             continue # Skip this iteration
 
         # *** FIX: Yield ONLY the raw JPEG bytes ***
         yield buffer.tobytes()
 
-        await asyncio.sleep(0.033)  # Ungefär 30 fps
+        await asyncio.sleep(FRAME_RATE)  # Ungefär 30 fps
 async def merge_stream(drone_ids):
     """Slår ihop videoströmmarna från två drönare."""
     id1, id2 = drone_ids
