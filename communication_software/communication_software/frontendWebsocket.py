@@ -243,6 +243,13 @@ async def drone2_feed():
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
+@app.get("/api/v1/video_feed/merged")
+async def merged_feed():
+    return StreamingResponse(
+        stream_drone_frames("_merged"),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
 @app.get("/api/v1/health")
 def health_check():
     return {"status": "ok", "timestamp": datetime.now().isoformat()}

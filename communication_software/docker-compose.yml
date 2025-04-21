@@ -62,6 +62,15 @@ services:
       - atos-net
     ports:
       - 8001:80
+    depends_on:
+      - comm_software
+  image_stitching:
+    container_name: image_stitching
+    build: 
+      context: ../image_stitching
+      # dockerfile: ../frontend/Dockerfile
+    networks:
+      - atos-net
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
