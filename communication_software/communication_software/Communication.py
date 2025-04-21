@@ -472,11 +472,12 @@ class Communication:
                 async def process_video(track):
                     while True:
                         try:
-                            frame = await track.recv()
-                            img = frame.to_ndarray(format="bgr24")  # Convert to OpenCV format
-                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
-                            await self.set_frame(connection_id, img_rgb)
+                            frame = await track.recv() #recieves yuv420p frame
+                            yuv_frame = frame.to_ndarray(format="yuv420p") # Convert to YUV420p
+                            
+                            
+                    
+                            await self.set_frame(connection_id, yuv_frame)
                         
                               
                         except Exception as e:

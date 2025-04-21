@@ -6,5 +6,5 @@ ENV BACKEND_URL="wss://drone-frontend.boisen.io"
 COPY webapp.html /webapp.html
 RUN envsubst < /webapp.html > /usr/share/nginx/html/index.html
 
-# 🔥 Add nginx config to route API calls to backend
+#Add nginx config to route API calls to backend
 COPY nginx.conf /etc/nginx/conf.d/default.conf
