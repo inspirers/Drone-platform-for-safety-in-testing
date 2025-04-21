@@ -11,7 +11,7 @@ import redis
 import asyncio
 
 # Global YOLO model (för att inte skapa den varje gång)
-model = YOLO("yolov8s.pt")
+model = YOLO("best.pt")
 
 # Redis connection (skapa en Redis-klient om den inte finns)
 r = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
@@ -163,7 +163,6 @@ async def merge_stream(drone_ids):
                 print("[INFO] Slut på videoström.")
                 stop_event.set()
                 break
-            # print("[INFO] Got left and right image.")
             # Decode frames till OpenCV
 
             left_frame_array = np.frombuffer(left_frame_data, dtype=np.uint8)
@@ -178,7 +177,6 @@ async def merge_stream(drone_ids):
                 print(f"left: {left}")
                 print(f"right: {right}")
                 continue  # Skippa om decoding misslyckades
-            print("[INFO] Decoded left and right image")
             # Skala bilderna
             if frame_height is None:
                 frame_height = int(left.shape[0] * (frame_width / left.shape[1]))
