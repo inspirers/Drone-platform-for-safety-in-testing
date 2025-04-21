@@ -191,6 +191,9 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
         print("Can not ensure full coverage with current drone amount")
 
+    
+    # Reduce square size 
+    
     flyTo_coords = []
     for drone_center in drone_centers:
         drone_loc_x = drone_center[0]
@@ -203,8 +206,52 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         long = droneOrigin.lng + delta_long
         
         flyTo_coords.append(Coordinate(lat, long, height))
+    
+    # Plot results
+    plt.figure(figsize=(8, 8))
+    plt.scatter(coords[:, 0], coords[:, 1], color='blue', label='Data Points')
+
+    # Bounding Rectangle
+    rect_corners = np.array([  
+        center + extent[0] * axis[0] + extent[1] * axis[1],
+        center + extent[0] * axis[0] - extent[1] * axis[1],
+        center - extent[0] * axis[0] - extent[1] * axis[1],
+        center - extent[0] * axis[0] + extent[1] * axis[1],
+        center + extent[0] * axis[0] + extent[1] * axis[1]
+    ])
+    plt.plot(rect_corners[:, 0], rect_corners[:, 1], 'r-', label='Min Area Rectangle')
+
+    # Drone Coverage Squares
+    for drone_center in drone_centers:
+        square_corners = np.array([
+            drone_center + square_size * axis[0] + square_size * axis[1],
+            drone_center + square_size * axis[0] - square_size * axis[1],
+            drone_center - square_size * axis[0] - square_size * axis[1],
+            drone_center - square_size * axis[0] + square_size * axis[1],
+            drone_center + square_size * axis[0] + square_size * axis[1]
+        ])
+        plt.plot(square_corners[:, 0], square_corners[:, 1], 'g-', label="Drone Coverage" if drone_center[0] == drone_centers[0][0] else "")
+
+    plt.legend()
+    plt.quiver(center[0], center[1], axis[0][0], axis[0][1], angles='xy', scale_units='xy', scale=1, color='magenta', label='Axis 0')
+    plt.quiver(center[0], center[1], axis[1][0], axis[1][1], angles='xy', scale_units='xy', scale=1, color='cyan', label='Axis 1')
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.title("Drone Coverage Area")
+    plt.grid()
+    plt.axis('equal')
+    plt.show()
 
     split_angle_radians = np.arctan2(split_axis[1], split_axis[0])
     angle = np.degrees(split_angle_radians) + 90
 
     return flyTo_coords, angle
+
+# Example usage, colinear test
+trajectories = {
+    "vehicle_1": [Coordinate(0, 0), Coordinate(10, 10), Coordinate(20, 20), Coordinate(0, 0), Coordinate(30, 30), Coordinate(50, 50)]
+}
+
+droneOrigin = Coordinate(0, 0, 0)
+flyto = getDronesLoc(trajectories, droneOrigin)
+

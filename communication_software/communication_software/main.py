@@ -5,7 +5,7 @@ import asyncio
 import time
 import threading
 from communication_software.frontendWebsocket import run_server
-from communication_software.multiple_drone_optimization import getDronesLoc
+from communication_software.ConvexHullScalable import getDronesLoc
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
 import rclpy
@@ -47,17 +47,16 @@ def main() -> None:
                     print("Coordinates could not be found")
                     continue
 
-                flyTo1, flyTo2, angle1, angle2, total_overlap = getDronesLoc(trajectoryList, droneOrigin) 
-                print(f"Drone going to: \n {flyTo1}, angle1: {angle1} \n {flyTo2}, angle2: {angle2}, estimated overlap: {total_overlap}")
-
-                droneOrigins = [flyTo1, flyTo2] 
-                angles = [angle1, angle2]       
-
-                if len(droneOrigins) != len(angles):
-                    print("Mismatch in the number of drone origins and angles.")
-                    continue
-
-                start_server(ATOScommunicator) 
+                #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
+                flyToList, angle = getDronesLoc(trajectoryList,droneOrigin)
+                    
+                for i, flyTo in enumerate(flyToList):
+                    print(f"Drone {i} going to: (lat, lng, alt) {flyTo.lat, flyTo.lng, flyTo.alt}, \n angle: {angle}")
+                
+                droneOrigins = tuple([coord for coord in flyToList])
+                angles = angle,angle
+                
+                start_server(ATOScommunicator)
 
                 communication = Communication()
 
@@ -88,7 +87,6 @@ def main() -> None:
         if rclpy.is_initialized():
             rclpy.shutdown()
         print("Shutdown complete.")
-
 
 def start_server(atos_communicator):
     server_thread = threading.Thread(target=run_server, args=(atos_communicator,), daemon=True)
