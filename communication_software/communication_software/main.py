@@ -51,7 +51,7 @@ def main() -> None:
                 flyToList, angle = getDronesLoc(trajectoryList,droneOrigin)
                     
                 for i, flyTo in enumerate(flyToList):
-                    print(f"Drone {i} going to: (lat, lng, alt) {flyTo.lat, flyTo.lng, flyTo.alt}, \n angle: {angle}")
+                    print(f"Drone {i} going to: (lat, lng, alt) {flyTo.lat, flyTo.lng, flyTo.alt}, \n angle: {angle}, link: https://www.google.com/maps/place/{flyTo.lat},{flyTo.lng}")
                 
                 droneOrigins = tuple([coord for coord in flyToList])
                 angles = angle,angle

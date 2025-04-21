@@ -110,7 +110,7 @@ class Communication:
         """Transforms coordinates into required format."""
         lat = str(coordinates.lat)[:9]
         lng = str(coordinates.lng)[:9]
-        alt = str(coordinates.alt)[:2]
+        alt = str(coordinates.alt)[:3]
         new_angle = str(angle)
         return (lat, lng, alt, new_angle)
 
