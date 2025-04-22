@@ -472,6 +472,7 @@ class Communication:
                 async def process_video(track):
                     while True:
                         try:
+                            
                             frame = await track.recv() #recieves yuv420p frame
                             yuv_frame = frame.to_ndarray(format="yuv420p") # Convert to YUV420p
                             
@@ -616,6 +617,7 @@ class Communication:
 
                 # Redis pipeline for storing the frame and setting TTL
                 drone_number = await self.get_connection_id_number(connection_id)
+                print(drone_number)
                 redis_key = f"frame_drone{drone_number}"
                 with r.pipeline() as pipe:
                     pipe.set(redis_key, frame_str)  # Save the frame
