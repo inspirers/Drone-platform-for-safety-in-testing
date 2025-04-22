@@ -28,7 +28,7 @@ async def consume_async_generator(gen, queue, stop_event):
 
 def detect_objects(frame):
     """ Kör YOLO för objektspårning på en frame. """
-    results = model.track(frame, persist=True, conf=0.75, imgsz=448)
+    results = model.track(frame, persist=True, conf=0.10, imgsz=1280)
     detections = sv.Detections.from_ultralytics(results[0])
     return detections
 
