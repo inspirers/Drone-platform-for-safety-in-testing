@@ -1,4 +1,5 @@
-FROM python:3.13-slim
+# FROM python:3.13-slim
+FROM nvidia/cuda:12.8.1-base-ubuntu24.04
 
 COPY requirements.txt .
 
