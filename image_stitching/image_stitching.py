@@ -10,6 +10,13 @@ import coordinateMapping
 import redis
 import asyncio
 import os
+import torch
+
+
+if torch.cuda.is_available():
+    print(f"[INFO] PyTorch CUDA detected. Available devices: {torch.cuda.device_count()}")
+else:
+    print("[INFO] PyTorch CUDA not detected. YOLO will use CPU.")
 
 # Global YOLO model (för att inte skapa den varje gång)
 model = YOLO("best.pt")
