@@ -124,15 +124,13 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         split_axis = axis[1]
         angle_axis = axis[0]
 
-    step = 0.98
     diagonal = max(extent)
     width = diagonal * (16 / 9) / np.sqrt((16 / 9)**2 + 1)  # Initialize width based on aspect ratio
     aspect_ratio = 16 / 9
     norm_factor = np.sqrt(aspect_ratio**2 + 1)
     split_offset = width * (1 - overlap)
-    height_r = diagonal * (1 / norm_factor)
+    height_r = diagonal * (1 / norm_factor)*1.1
     split_offset = width * (1 + (1 - 2 * overlap))
-    print(n_drones)
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
     height = calculate_Height(width * height_r)
 
@@ -143,8 +141,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         height = 99
         height_r = optimize.root_scalar(lambda x: calculate_Height(x) - height, x0=20, method="newton").root
         print("Cannot ensure full coverage with current drone amount")
-
-    print(height)
 
     flyTo_coords = []
     for drone_center in drone_centers:
@@ -199,4 +195,4 @@ vehicle_trajectories = {
     ]
 }
 droneOrigin = Coordinate(0, 0, 0)
-flyto = getDronesLoc(vehicle_trajectories, droneOrigin, n_drones=2, overlap=0.5)
+flyto = getDronesLoc(vehicle_trajectories, droneOrigin)

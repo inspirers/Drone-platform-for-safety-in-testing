@@ -37,7 +37,7 @@ class ProximityError(Exception):
     def __init__(self, message="Does not take more than one drone and overlap over 90 percent"):
         super().__init__(message)
 
-def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
+def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.2):
     if not (0 <= overlap <= 1):
         raise ValueError("Overlap must be between 0 and 1 (inclusive).")
     if n_drones >= 2 and overlap >= 0.9:
@@ -143,7 +143,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     split_offset = width * (1 - overlap)
     height_r = diagonal * (1 / norm_factor)
     split_offset = width * (1 + (1 - 2 * overlap))
-    print(n_drones)
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
     height = calculate_Height(width * height_r)
 
@@ -154,8 +153,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         height = 99
         height_r = optimize.root_scalar(lambda x: calculate_Height(x) - height, x0=20, method="newton").root
         print("Cannot ensure full coverage with current drone amount")
-
-    print(height)
 
     flyTo_coords = []
     for drone_center in drone_centers:
