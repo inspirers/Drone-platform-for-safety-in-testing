@@ -16,11 +16,11 @@ services:
       - 8000:8000
       - 3478:3478/udp  # STUN server port
       - 8765:8765/udp  # WebRTC signaling port
-    environment: 
+    environment: # 
       - ENV_ALTITUDE= 15 # does not matter probably
-      - ENV_LATITUDE= 57.77285725385846
-      - ENV_LONGITUDE= 12.770410625200554
-      - DEBUG_MODE=False
+      - ENV_LATITUDE= 57.77293201101717
+      - ENV_LONGITUDE= 12.773497400522357
+      - DEBUG_MODE=True
     depends_on:
       - atos
       - redis

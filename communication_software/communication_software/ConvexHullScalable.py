@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 from scipy import optimize
 from random import randint, choice
-
+from geopy.distance import distance
+from geopy.point import Point
 
 class Coordinate:
     def __init__(self, lat, lng, alt=0):
@@ -196,23 +197,31 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
     flyTo_coords = []
     for drone_center in drone_centers:
-        # drone_loc_x = drone_center[0]
-        # drone_loc_y = drone_center[1]
+        drone_loc_x = drone_center[0]
+        drone_loc_y = drone_center[1]
 
-        # delta_lat = drone_loc_x / 6371000 * (180 / np.pi)
-        # delta_long = (drone_loc_y / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
+        delta_lat = drone_loc_x / 6371000 * (180 / np.pi)
+        delta_long = (drone_loc_y / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
         
-        # lat = droneOrigin.lat + delta_lat
-        # long = droneOrigin.lng + delta_long
-        
-        dx = drone_center[0]
-        dy = drone_center[1]
-
-        delta_lat = dy/111000
-        delta_lon = dx/(111000 * np.cos(np.radians(droneOrigin.lat)))
-
         lat = droneOrigin.lat + delta_lat
-        long = droneOrigin.lng + delta_lon
+        long = droneOrigin.lng + delta_long
+        
+        # dx = drone_center[0]
+        # dy = drone_center[1]
+
+        # delta_lat = dy/111000
+        # delta_lon = dx/(111000 * np.cos(np.radians(droneOrigin.lat)))
+
+        # lat = droneOrigin.lat + delta_lat
+        # long = droneOrigin.lng + delta_lon
+
+        # origin = Point(droneOrigin.lat, droneOrigin.lng)
+
+        # new_point_north = distance(meters=dy).destination(origin, bearing=0)
+        # final_point = distance(meters=dx).destination(new_point_north, bearing=90)
+
+        # lat = final_point.latitude
+        # long = final_point.longitude
 
         flyTo_coords.append(Coordinate(lat, long, height))
 
