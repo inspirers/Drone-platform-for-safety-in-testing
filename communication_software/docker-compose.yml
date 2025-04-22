@@ -72,7 +72,7 @@ services:
   image_stitching:
     container_name: image_stitching
     environment:
-      - REDIS_URL=redis
+      - REDIS_URL=192.168.1.41 # use redis or localhost for Docker
     build: 
       context: ../image_stitching
     networks:
