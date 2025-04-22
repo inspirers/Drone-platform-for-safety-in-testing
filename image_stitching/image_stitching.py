@@ -229,6 +229,8 @@ async def merge_stream(drone_ids):
                 annotated_frame = stitched_frame  # Ingen detektion, visa bara sammansatt bild
 
             # Skicka den sammansatta och annoterade bilden till Redis
+            annotated_frame = cv2.resize(annotated_frame, (640, 380))
+            print(annotated_frame.shape)
             await set_frame(annotated_frame)
             print("Setting stitched video frame in Redis")
             # Visa den annoterade bilden i OpenCV
