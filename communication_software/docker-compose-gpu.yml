@@ -79,13 +79,13 @@ services:
       - atos-net
     depends_on:
       - redis
-    # deploy: 
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: "all" 
-    #           capabilities: [gpu] 
+    deploy: 
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: "all" 
+              capabilities: [gpu] 
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
