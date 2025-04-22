@@ -191,6 +191,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     angle = np.arctan2(angle_axis[1], angle_axis[0])
     return flyTo_coords, np.degrees(angle)
 
+
 # Example usage
 vehicle_trajectories = {
     'vehicle_1': [

@@ -1,6 +1,6 @@
 FROM nginx:latest
 
-ENV BACKEND_URL="wss://drone-frontend.boisen.io"
+ENV BACKEND_URL="ws://localhost:8000"
 
 # Inject backend URL into frontend HTML
 COPY webapp.html /webapp.html
