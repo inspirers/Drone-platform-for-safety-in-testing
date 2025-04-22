@@ -4,6 +4,7 @@ from scipy.spatial import ConvexHull
 from scipy import optimize
 from random import randint, choice
 
+
 class Coordinate:
     def __init__(self, lat, lng, alt=0):
         self.lat = lat
@@ -195,15 +196,24 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
 
     flyTo_coords = []
     for drone_center in drone_centers:
-        drone_loc_x = drone_center[0]
-        drone_loc_y = drone_center[1]
+        # drone_loc_x = drone_center[0]
+        # drone_loc_y = drone_center[1]
 
-        delta_lat = drone_loc_x / 6371000 * (180 / np.pi)
-        delta_long = (drone_loc_y / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
+        # delta_lat = drone_loc_x / 6371000 * (180 / np.pi)
+        # delta_long = (drone_loc_y / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
         
+        # lat = droneOrigin.lat + delta_lat
+        # long = droneOrigin.lng + delta_long
+        
+        dx = drone_center[0]
+        dy = drone_center[1]
+
+        delta_lat = dy/111000
+        delta_lon = dx/(111000 * np.cos(np.radians(droneOrigin.lat)))
+
         lat = droneOrigin.lat + delta_lat
-        long = droneOrigin.lng + delta_long
-        
+        long = droneOrigin.lng + delta_lon
+
         flyTo_coords.append(Coordinate(lat, long, height))
 
     angle = np.arctan2(angle_axis[1], angle_axis[0])

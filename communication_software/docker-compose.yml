@@ -18,9 +18,9 @@ services:
       - 8765:8765/udp  # WebRTC signaling port
     environment: 
       - ENV_ALTITUDE= 15 # does not matter probably
-      - ENV_LATITUDE= 57.68819679236606
-      - ENV_LONGITUDE= 11.98050450974414
-      - DEBUG_MODE=True
+      - ENV_LATITUDE= 57.77285725385846
+      - ENV_LONGITUDE= 12.770410625200554
+      - DEBUG_MODE=False
     depends_on:
       - atos
       - redis
