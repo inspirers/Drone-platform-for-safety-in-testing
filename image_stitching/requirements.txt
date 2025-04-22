@@ -12,3 +12,4 @@ supervision
 redis
 
 lap
+torch

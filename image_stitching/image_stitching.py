@@ -19,11 +19,11 @@ else:
     print("[INFO] PyTorch CUDA not detected. YOLO will use CPU.")
 
 # Global YOLO model (för att inte skapa den varje gång)
-model = YOLO("best.pt")
+model = YOLO("models/best.pt")
 
 redis_url = os.environ.get("REDIS_URL", "localhost")
 # Redis connection (skapa en Redis-klient om den inte finns)
-r = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+r = redis.StrictRedis(host=redis_url, port=6379, db=0, decode_responses=True)
 
 ## ---- HELPER FUNCTIONS ----
 

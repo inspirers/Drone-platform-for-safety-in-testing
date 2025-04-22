@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY image_stitching.py main.py
 COPY annotator.py . 
 COPY coordinateMapping.py .
-COPY models/best.pt .
+COPY models/ /models
 # COPY yolov8s.pt .
 
 CMD ["python", "main.py"]
