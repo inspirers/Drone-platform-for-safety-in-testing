@@ -54,6 +54,7 @@ public class DJIVideoCapturer implements VideoCapturer {
             public void onYuvDataReceived(MediaFormat mediaFormat, ByteBuffer videoBuffer, int dataSize, int width, int height) {
                 if (videoBuffer != null) {
                     try {
+                        
                         long timestampNS = TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime());
                         
                         // Extract NV12 data from the ByteBuffer

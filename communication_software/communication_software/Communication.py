@@ -474,10 +474,29 @@ class Communication:
                         try:
                             frame = await track.recv() #recieves yuv420p frame
                             yuv_frame = frame.to_ndarray(format="yuv420p") # Convert to YUV420p
-                            
+                            bgr_frame = cv2.cvtColor(yuv_frame, cv2.COLOR_YUV2BGR_I420) # Convert to BGR format 
+                            height = frame.height
+                            width = frame.width
+
+                            # Extract Y, U, and V channels
+                            y_size = height * width
+                            uv_height = height // 2
+                            uv_width = width // 2
+
+                            # Reshape the YUV frame to match YUV420p structure
+                            y_channel = yuv_frame[:380, :]  # Extract Y data
+
+                            u_channel = yuv_frame[380:380 + 190, :320]  # Extract U data
+
+                            v_channel = yuv_frame[380 + 190:, :320]  # Extract V data        # V channel
+
+                            # Log some values for debugging
+                            print(f"Y Channel Sample: {y_channel[0, :10]}")  # First 10 values of Y
+                            print(f"U Channel Sample: {u_channel[0, :10]}")  # First 10 values of U
+                            print(f"V Channel Sample: {v_channel[0, :10]}")  # First 10 values of V
                             
                     
-                            await self.set_frame(connection_id, yuv_frame)
+                            await self.set_frame(connection_id, bgr_frame)
                         
                               
                         except Exception as e:
