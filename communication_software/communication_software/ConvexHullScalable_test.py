@@ -178,7 +178,8 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         square_size = 1.1*longer_extent
         drone_centers = [center]
 
-    height = calculate_Height((2*square_size)**2)
+    height = calculate_Height((square_size)**2)
+    print(height)
 
     if height < 30:
         height = 30
