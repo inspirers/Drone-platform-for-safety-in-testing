@@ -9,10 +9,12 @@ from annotator import Annotator
 import coordinateMapping
 import redis
 import asyncio
+import os
 
 # Global YOLO model (för att inte skapa den varje gång)
 model = YOLO("best.pt")
 
+redis_url = os.environ.get("REDIS_URL", "localhost")
 # Redis connection (skapa en Redis-klient om den inte finns)
 r = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
 

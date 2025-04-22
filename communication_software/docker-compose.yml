@@ -71,6 +71,8 @@ services:
       - comm_software
   image_stitching:
     container_name: image_stitching
+    environment:
+      - REDIS_URL=redis
     build: 
       context: ../image_stitching
       # dockerfile: ../frontend/Dockerfile
