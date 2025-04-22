@@ -30,7 +30,7 @@ services:
     networks:
       - atos-net
     ports:
-      #- "80:80" 
+      - "80:80" 
       - "8080:8080" 
       - "8081:8081"
       - "8082:8082"
@@ -89,8 +89,8 @@ services:
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
-    ports:
-      - '6379:6379'
+    #ports:
+    #  - '6379:6379'
     networks:
       - atos-net
 
