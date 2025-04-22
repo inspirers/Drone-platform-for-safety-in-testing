@@ -177,7 +177,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         plt.plot(rect_corners[:, 0], rect_corners[:, 1], 'g-', label="Drone Coverage" if drone_center is drone_centers[0] else "")
 
     plt.legend()
-    plt.quiver(center[0], center[1], axis[0][0], axis[0][1], angles='xy', scale_units='xy', scale=1, color='magenta', label='Axis 0')
     plt.quiver(center[0], center[1], axis[1][0], axis[1][1], angles='xy', scale_units='xy', scale=1, color='cyan', label='Axis 1')
     plt.xlabel("ATOS x-coordinate")
     plt.ylabel("ATOS y-coordinate")
