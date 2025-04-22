@@ -75,11 +75,17 @@ services:
       - REDIS_URL=redis
     build: 
       context: ../image_stitching
-      # dockerfile: ../frontend/Dockerfile
     networks:
       - atos-net
     depends_on:
       - redis
+    deploy: 
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: "all" 
+              capabilities: [gpu] 
   redis:
     container_name: astazero-redis
     image: public.ecr.aws/docker/library/redis:latest
