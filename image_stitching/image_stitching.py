@@ -9,12 +9,21 @@ from annotator import Annotator
 import coordinateMapping
 import redis
 import asyncio
+import os
+import torch
+
+
+if torch.cuda.is_available():
+    print(f"[INFO] PyTorch CUDA detected. Available devices: {torch.cuda.device_count()}")
+else:
+    print("[INFO] PyTorch CUDA not detected. YOLO will use CPU.")
 
 # Global YOLO model (för att inte skapa den varje gång)
-model = YOLO("best.pt")
+model = YOLO("models/best.pt")
 
+redis_url = os.environ.get("REDIS_URL", "localhost")
 # Redis connection (skapa en Redis-klient om den inte finns)
-r = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+r = redis.StrictRedis(host=redis_url, port=6379, db=0, decode_responses=True)
 
 ## ---- HELPER FUNCTIONS ----
 
@@ -28,7 +37,7 @@ async def consume_async_generator(gen, queue, stop_event):
 
 def detect_objects(frame):
     """ Kör YOLO för objektspårning på en frame. """
-    results = model.track(frame, persist=True, conf=0.75, imgsz=448)
+    results = model.track(frame, persist=True, conf=0.10, imgsz=1280)
     detections = sv.Detections.from_ultralytics(results[0])
     return detections
 
@@ -229,6 +238,8 @@ async def merge_stream(drone_ids):
                 annotated_frame = stitched_frame  # Ingen detektion, visa bara sammansatt bild
 
             # Skicka den sammansatta och annoterade bilden till Redis
+            annotated_frame = cv2.resize(annotated_frame, (640, 380))
+            print(annotated_frame.shape)
             await set_frame(annotated_frame)
             print("Setting stitched video frame in Redis")
             # Visa den annoterade bilden i OpenCV

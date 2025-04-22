@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 from scipy import optimize
 from random import randint, choice
+from geopy.distance import distance
+from geopy.point import Point
 
 class Coordinate:
     def __init__(self, lat, lng, alt=0):
@@ -135,13 +137,14 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.2):
         split_axis = axis[1]
         angle_axis = axis[0]
 
+
     step = 0.98
     diagonal = max(extent)
     width = diagonal * (16 / 9) / np.sqrt((16 / 9)**2 + 1)  # Initialize width based on aspect ratio
     aspect_ratio = 16 / 9
     norm_factor = np.sqrt(aspect_ratio**2 + 1)
     split_offset = width * (1 - overlap)
-    height_r = diagonal * (1 / norm_factor)
+    height_r = diagonal * (1 / norm_factor)*1.1
     split_offset = width * (1 + (1 - 2 * overlap))
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
     height = calculate_Height(width * height_r)
@@ -164,3 +167,4 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.2):
 
     angle = np.arctan2(angle_axis[1], angle_axis[0])
     return flyTo_coords, np.degrees(angle)
+
