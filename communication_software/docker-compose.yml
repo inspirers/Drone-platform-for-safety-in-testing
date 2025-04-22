@@ -10,9 +10,17 @@ services:
     networks:
       - atos-net
     ports:
-      - 8765:14500
+      - 8765:8765
       - 14500:14500
+      - 5000:5000
       - 8000:8000
+      - 3478:3478/udp  # STUN server port
+      - 8765:8765/udp  # WebRTC signaling port
+    environment: 
+      - ENV_ALTITUDE= 15 # does not matter probably
+      - ENV_LATITUDE= 57.688903266630945
+      - ENV_LONGITUDE= 11.97940812478253
+      - DEBUG_MODE=True
   atos:
     image: astazero/atos_docker_env:latest
     container_name: atos
@@ -46,7 +54,6 @@ services:
           cpus: "0.05"
           memory: 128M
   frontend:
-    image: nginx:latest
     container_name: frontend
     build: 
       context: ../frontend
@@ -55,6 +62,22 @@ services:
       - atos-net
     ports:
       - 8001:80
+    depends_on:
+      - comm_software
+  image_stitching:
+    container_name: image_stitching
+    build: 
+      context: ../image_stitching
+      # dockerfile: ../frontend/Dockerfile
+    networks:
+      - atos-net
+  redis:
+    container_name: astazero-redis
+    image: public.ecr.aws/docker/library/redis:latest
+    ports:
+      - '6379:6379'
+    networks:
+      - atos-net
 
 networks:
   atos-net:

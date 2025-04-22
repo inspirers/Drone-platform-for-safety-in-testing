@@ -7,12 +7,19 @@ FROM ${FROM_IMAGE} AS application
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
+RUN pip install redis
+RUN pip install aiortc
+RUN pip install flask
+
+
 # --- Workspace Setup ---
 ENV WORKSPACE_DIR=/root/atos_ws
 RUN mkdir -p ${WORKSPACE_DIR}/src
 
 # Copy the entire project into the workspace's src directory
 COPY . ${WORKSPACE_DIR}/src/communication_software
+
+EXPOSE 5000  
 
 # --- Build ---
 WORKDIR ${WORKSPACE_DIR}
