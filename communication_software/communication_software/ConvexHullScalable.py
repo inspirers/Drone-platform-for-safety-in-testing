@@ -189,7 +189,6 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
 
     if height == 99:
-        height = 99
         square_size = optimize.root_scalar(lambda x: calculate_Height(x)-height, x0=20, method="newton").root
         split_offset = (square_size * (1 - overlap) * 2)
         drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(n_drones)] 
