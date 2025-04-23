@@ -4,7 +4,8 @@ from rclpy.node import Node
 import time
 from std_msgs.msg import Empty
 from sensor_msgs.msg import NavSatFix
-from communication_software.CoordinateHandler import *
+# from communication_software.CoordinateHandler import *
+from communication_software.ConvexHullScalable import Coordinate
 #from  CoordinateHandler import *
 import numpy as np
 

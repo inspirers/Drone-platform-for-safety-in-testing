@@ -17,7 +17,7 @@
   <exec_depend>cv2</exec_depend>
   <exec_depend>math</exec_depend>
   <exec_depend>ultralytics</exec_depend>
-  <exec_depend>CoordinateHandler</exec_depend>
+  <!-- <exec_depend>CoordinateHandler</exec_depend> -->
   
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

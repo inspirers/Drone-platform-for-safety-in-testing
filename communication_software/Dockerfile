@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
 
-RUN pip install redis aiortc flask geopy
+RUN pip install redis aiortc geopy
 
 # --- Workspace Setup ---
 ENV WORKSPACE_DIR=/root/atos_ws
