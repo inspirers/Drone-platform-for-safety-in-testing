@@ -5,14 +5,12 @@ import websockets
 from websockets import WebSocketServerProtocol
 from communication_software.ConvexHullScalable import Coordinate
 import threading
-import av
 import asyncio
 import redis
 import cv2
 import numpy as np
 
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceCandidate
-from aiortc.contrib.media import MediaRecorder
 from aiortc.sdp import candidate_from_sdp
 
 
@@ -33,34 +31,16 @@ ice_configuration = RTCConfiguration(
     iceServers=[RTCIceServer(urls="stun:stun.l.google.com:19302")]
 )
 
-
-class DroneStream:
-    def __init__(self, connection_id, video_tag_id):
-        self.connection_id = connection_id
-        self.video_tag_id = video_tag_id
-        self.peer_connection = RTCPeerConnection(configuration=ice_configuration)
-        self.recorder = MediaRecorder(f"{connection_id}_{video_tag_id}_recording.mp4")
-
-    async def close(self):
-        await self.peer_connection.close()
-        await self.recorder.stop()
-
-
 class Communication:
     def __init__(self) -> None:
         self.connections = {}  # Active WebSocket connections
         self.coordinates = {}  # Coordinates for each client
         self.drone_coordinates = []  # List of drone coordinates
         self.client_index = 0  # Tracks which coordinate to assign next
-        self.streams = {}
-        self.locks = {}
-        self.frame = {}  # Dictionary to store locks for each peer_id
 
         self.loop = None
         self.redis_listener_stop_event = threading.Event()
         self.redis_listener_task = None
-        self.ongoing_streams = {}
-        self.stream_obj = None  # Placeholder for stream display/output
         self.peer_connections = {}
 
     async def send_coordinates_websocket(
@@ -503,7 +483,7 @@ class Communication:
     ###WEBBRTC###
 
     async def send_message(self, connection_id, message):
-        """Send a message to the WebSocket server."""
+        """"Sends a message to the WebSocket connection."""
         print(
             f"[DroneStream] Sending message: {message} to connection ID: {connection_id}"
         )
@@ -526,7 +506,7 @@ class Communication:
         except Exception as e:
             print(f"[DroneStream] Error in createOffer(): {e}")
 
-    # Creates a peer connection for each drone stream
+  
     def create_peer_connection(self, connection_id):
         """Create and configure the RTCPeerConnection."""
         try:
@@ -549,6 +529,7 @@ class Communication:
 
             @self.peer_connections[connection_id].on("track")
             def on_track(track):
+                
                 print(f"[DroneStream] Received track: {track.kind}")
 
                 async def process_video(track):
