@@ -50,6 +50,7 @@
                     <div class="card-body p-0">
                         <div id="videoContainer" class="video-container">
                             <img id="video1" class="video-stream" src="/api/v1/video_feed/drone1">
+                            <img id="merged" class="video-stream" src="/api/v1/video_feed/merged">
                             <img id="video2" class="video-stream" src="/api/v1/video_feed/drone2"
                                 style="display: none;">
                         </div>
@@ -160,17 +161,22 @@
             const layout = this.value;
             const video1 = document.getElementById('video1');
             const video2 = document.getElementById('video2');
+            const merged = document.getElementById('merged');
 
             if (layout === 'single') {
-                video1.style.display = 'block';
+                merged.style.display = 'block';
+                video1.style.display = 'none';
                 video2.style.display = 'none';
             } else if (layout === 'sidebyside') {
+                merged.style.display = 'none';
                 video1.style.display = 'block';
                 video2.style.display = 'block';
             } else if (layout === 'drone1') {
+                merged.style.display = 'none';
                 video1.style.display = 'block';
                 video2.style.display = 'none';
             } else if (layout === 'drone2') {
+                merged.style.display = 'none';
                 video1.style.display = 'none';
                 video2.style.display = 'block';
             }

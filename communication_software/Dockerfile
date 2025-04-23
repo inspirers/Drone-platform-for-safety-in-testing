@@ -7,10 +7,8 @@ FROM ${FROM_IMAGE} AS application
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-RUN pip install redis
-RUN pip install aiortc
-RUN pip install flask
 
+RUN pip install redis aiortc geopy
 
 # --- Workspace Setup ---
 ENV WORKSPACE_DIR=/root/atos_ws
