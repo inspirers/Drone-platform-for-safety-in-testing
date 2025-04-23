@@ -74,8 +74,9 @@ def get_drone_coordinates(ATOScommunicator):
 
     trajectoryList = get_trajectorylist(ATOScommunicator)
 
-    # Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
-    flyToList, angle = getDronesLoc(trajectoryList, origo)
+    n_drones = int(os.environ.get("N_DRONES", 2))
+    overlap = float(os.environ.get("OVERLAP", 0.5))
+    flyToList, angle = getDronesLoc(trajectoryList, origo, n_drones, overlap)
 
     print_fly_to_list(flyToList, angle)
 
@@ -129,8 +130,8 @@ def main_loop_exit(ATOScommunicator):
     print("Shutting down ROS node...")
     if ATOScommunicator:
         ATOScommunicator.destroy_node()
-    if rclpy.is_initialized():
-        rclpy.shutdown()
+    # if rclpy.is_initialized():
+    rclpy.shutdown()
     print("Shutdown complete.")
 
 
