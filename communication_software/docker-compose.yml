@@ -20,7 +20,7 @@ services:
       - ENV_ALTITUDE= 15 # does not matter probably
       - ENV_LATITUDE= 57.77293201101717
       - ENV_LONGITUDE= 12.773497400522357
-      - DEBUG_MODE=True
+      - DEBUG_MODE=False
     depends_on:
       - atos
       - redis

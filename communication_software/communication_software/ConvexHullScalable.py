@@ -6,38 +6,54 @@ from random import randint, choice
 from geopy.distance import distance
 from geopy.point import Point
 
+
 class Coordinate:
-    def __init__(self, lat, lng, alt=0):
+    """Coordinate class that contains an altitude, longutude and altitude"""
+
+    def __init__(self, lat: float, lng: float, alt: float) -> None:
         self.lat = lat
         self.lng = lng
         self.alt = alt
 
+    def __str__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
+
+    def __repr__(self):
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
+
+
 def calculate_Height(area):
-    """Calculates the height that the drone need to fly at to cover a certain area 
+    """Calculates the height that the drone need to fly at to cover a certain area
     Args:
         area (int): Which currently is preset to 1500, unit: m^2
 
     Returns:
-            height (int): The height to fly at, unit: m 
+            height (int): The height to fly at, unit: m
     """
-    #area = the FOV area to be covered in m^2
-    theta = (82.6/2)*(np.pi/180) #chalmers drone has a lens of 82.6 degrees, convert to rad
-    x = np.sqrt(area/(16*9)) #FOV is 16:9 resolution 
-    y = (16*x)/4 #Photosensor is 4:3 resolution
-    radius = np.sqrt((2*y)**2+(1.5*y)**2) #pythagoras theorem
-    height = radius / np.tan(theta) 
-    height = round(height) #no need for decimals
-    if height < 99: #swedish regulation limits the drone flying height to below 120 m
-        return height 
+    # area = the FOV area to be covered in m^2
+    theta = (82.6 / 2) * (
+        np.pi / 180
+    )  # chalmers drone has a lens of 82.6 degrees, convert to rad
+    x = np.sqrt(area / (16 * 9))  # FOV is 16:9 resolution
+    y = (16 * x) / 4  # Photosensor is 4:3 resolution
+    radius = np.sqrt((2 * y) ** 2 + (1.5 * y) ** 2)  # pythagoras theorem
+    height = radius / np.tan(theta)
+    height = round(height)  # no need for decimals
+    if height < 99:  # swedish regulation limits the drone flying height to below 120 m
+        return height
     else:
         print("The height exceeds swedish regulations")
         height = 99
         return height
 
+
 class ProximityError(Exception):
 
-    def __init__(self, message="Does not take more than one drone and overlap over 90 percent"):
+    def __init__(
+        self, message="Does not take more than one drone and overlap over 90 percent"
+    ):
         super().__init__(message)
+
 
 def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     if not (0 <= overlap <= 1):
@@ -55,7 +71,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
             self.center = np.array([0.0, 0.0])
             self.axis = [np.array([0.0, 0.0]), np.array([0.0, 0.0])]
             self.extent = [0.0, 0.0]
-            self.area = float('inf')
+            self.area = float("inf")
 
     def normalize(v):
         return v / np.linalg.norm(v)
@@ -137,35 +153,44 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
         split_axis = axis[1]
         angle_axis = axis[0]
 
-
     step = 0.98
     diagonal = max(extent)
-    width = diagonal * (16 / 9) / np.sqrt((16 / 9)**2 + 1)  # Initialize width based on aspect ratio
+    width = (
+        diagonal * (16 / 9) / np.sqrt((16 / 9) ** 2 + 1)
+    )  # Initialize width based on aspect ratio
     aspect_ratio = 16 / 9
     norm_factor = np.sqrt(aspect_ratio**2 + 1)
     split_offset = width * (1 - overlap)
-    height_r = diagonal * (1 / norm_factor)*1.1
+    height_r = diagonal * (1 / norm_factor) * 1.1
     split_offset = width * (1 + (1 - 2 * overlap))
     print(n_drones)
-    drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
+    drone_centers = [
+        center + (i - (n_drones - 1) / 2) * split_offset * split_axis
+        for i in range(int(n_drones))
+    ]
     height = calculate_Height(width * height_r)
 
     if height < 30:
         height = 30
-        height_r = optimize.root_scalar(lambda x: calculate_Height(x) - height, x0=20, method="newton").root
+        height_r = optimize.root_scalar(
+            lambda x: calculate_Height(x) - height, x0=20, method="newton"
+        ).root
     elif height == 99:
         height = 99
-        height_r = optimize.root_scalar(lambda x: calculate_Height(x) - height, x0=20, method="newton").root
+        height_r = optimize.root_scalar(
+            lambda x: calculate_Height(x) - height, x0=20, method="newton"
+        ).root
         print("Cannot ensure full coverage with current drone amount")
 
     flyTo_coords = []
     for drone_center in drone_centers:
         delta_lat = drone_center[0] / 6371000 * (180 / np.pi)
-        delta_long = (drone_center[1] / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
+        delta_long = (
+            drone_center[1] / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))
+        ) * (180 / np.pi)
         lat = droneOrigin.lat + delta_lat
         long = droneOrigin.lng + delta_long
         flyTo_coords.append(Coordinate(lat, long, height))
 
     angle = np.arctan2(angle_axis[1], angle_axis[0])
     return flyTo_coords, round(np.degrees(angle))
-
