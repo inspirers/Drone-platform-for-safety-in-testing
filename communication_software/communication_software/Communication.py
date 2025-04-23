@@ -440,7 +440,7 @@ class Communication:
         """Cleans up connections and PeerConnections when a client disconnects."""
         self.connections.pop(connection_id, None)
         self.coordinates.pop(connection_id, None)
-
+        self.peer_connections.pop(connection_id, None)
         print(f"Connection {connection_id} removed.")
 
     def start_redis_listener_thread(self):
