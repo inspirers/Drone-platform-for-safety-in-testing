@@ -600,7 +600,6 @@ class Communication:
     async def handle_incoming_webrtc_msg(self, connection_id, message):
         """Route incoming WebRTC messages to the appropriate DroneStream."""
         try:
-            drone_stream = self.get_stream_by_drone_id(connection_id)
             await self.on_message(message, connection_id)
             print(
                 f"[Stream Manager] Message routed to DroneStream ({connection_id}) successfully."
