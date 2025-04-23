@@ -21,6 +21,7 @@ services:
       - ENV_LATITUDE= 57.77293201101717
       - ENV_LONGITUDE= 12.773497400522357
       - DEBUG_MODE=False
+      - N_DRONES=2
     depends_on:
       - atos
       - redis
