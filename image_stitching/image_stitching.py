@@ -56,6 +56,14 @@ def detect_objects(frame: np.ndarray) -> sv.Detections:
     detections = sv.Detections.from_ultralytics(results[0])
     return detections
 
+def printID(detections, gps_coords):
+    track_ids = detections.tracker_id
+    if track_ids is None:
+        return
+    for track_id, gps in zip(track_ids, gps_coords):
+        lat, lon = gps
+        print(f'[TRACKING] ID {track_id} AT GPS-position ({lat:.6f}, {lon:.6f})')
+        
 def get_weighted_gps(pixel_x: int, frame_width: int, left_gps: tuple[float, float], right_gps: tuple[float, float]) -> tuple[float, float]:
     """
     Calculate a weighted GPS position based on object position in the image.
@@ -272,6 +280,9 @@ async def merge_stream(drone_ids: tuple[int, int]) -> None:
                     best_gps = get_weighted_gps(x_center, frame_width * 2, gps_left, gps_right)
                     gps_positions.append(best_gps)
 
+                # Now call the printID function after the gps_positions list is populated
+                printID(detections, gps_positions)
+                
                 # ---- SHOW RESULTS ----
                 labels = [f"ID: {d} GPS: {round(g[0], 6)}, {round(g[1], 6)}" for d, g in zip(detections.tracker_id, gps_positions)]
                 position_labels = [f"({int(d[0])}, {int(d[1])})" for d in detections.xyxy]

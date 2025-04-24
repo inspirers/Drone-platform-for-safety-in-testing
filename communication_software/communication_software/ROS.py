@@ -283,7 +283,12 @@ def main():
         coordlist = atos_communicator.get_object_traj(id)
         trajectoryList[id] = coordlist
 
+
     droneOrigin, angle = getNewDroneOrigin(trajectoryList,origo)
+    
+    #compare_pos.true_pos = trajectoryList
+    #self.tru_pos = {}
+    
     print(droneOrigin.lat,droneOrigin.lng,droneOrigin.alt)
     print(angle)
 
