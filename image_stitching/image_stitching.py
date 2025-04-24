@@ -57,6 +57,34 @@ def detect_objects(frame: np.ndarray) -> sv.Detections:
     return detections
 
 def printID(detections, gps_coords):
+    
+    """
+    Print the tracking ID (as integer) and corresponding GPS coordinates (as floats) for detected objects.
+
+    This function loops through the detected objects, extracts their tracking ID 
+    (which is an integer) and corresponding GPS coordinates (latitude and longitude, both floats), 
+    and prints this information to the console in the format: 
+    '[TRACKING] ID {track_id} AT GPS-position ({lat:.6f}, {lon:.6f})'.
+
+    Args:
+        detections (sv.Detections): A list of detected objects, obtained from YOLO detection.
+                                     Contains the tracking IDs of the detected objects.
+        gps_coords (list of tuple): A list of GPS coordinates (latitude, longitude) for each detected object.
+                                     These coordinates are calculated based on the pixel coordinates of the object.
+                                     The latitude and longitude values are both of type float.
+
+    Returns:
+        None: This function does not return any value. It prints the tracking information to the console.
+
+    Example:
+        If an object with tracking ID 1 has GPS coordinates (57.6900, 11.9800), the print statement will output:
+        '[TRACKING] ID 1 AT GPS-position (57.690000, 11.980000)'
+
+    Notes:
+        - `track_id` is of type int.
+        - `gps_coords` is a list of tuples where each tuple contains two floats: latitude and longitude.
+    """
+    
     track_ids = detections.tracker_id
     if track_ids is None:
         return
