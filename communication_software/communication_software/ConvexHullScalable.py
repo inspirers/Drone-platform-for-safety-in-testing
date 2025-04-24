@@ -42,7 +42,7 @@ def calculate_Height(area):
     if height < 99:  # swedish regulation limits the drone flying height to below 120 m
         return height
     else:
-        print("The height exceeds swedish regulations")
+        print(f"The height {height} m exceeds Swedish regulations. Defaulting to 99 m")
         height = 99
         return height
 
@@ -163,7 +163,7 @@ def getDronesLoc(coordslist, droneOrigin, n_drones=2, overlap=0.5):
     split_offset = width * (1 - overlap)
     height_r = diagonal * (1 / norm_factor) * 1.1
     split_offset = width * (1 + (1 - 2 * overlap))
-    print(n_drones)
+    # print(n_drones)
     drone_centers = [
         center + (i - (n_drones - 1) / 2) * split_offset * split_axis
         for i in range(int(n_drones))
