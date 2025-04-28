@@ -33,6 +33,7 @@ def main() -> None:
                 time.sleep(1) 
 
                 origo = get_origo_coords(ATOScommunicator)
+                origo = Coordinate(lat= 57.685596, lng= 11.978925, alt= 0) 
 
                 ids = ATOScommunicator.get_object_ids()
                 trajectoryList = {}
