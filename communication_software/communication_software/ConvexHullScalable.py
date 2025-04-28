@@ -1,8 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
-from scipy import optimize
-from random import randint, choice
 
 # Exception classes
 
@@ -19,6 +16,12 @@ class Coordinate:
         self.lat = lat
         self.lng = lng
         self.alt = alt
+
+    def __str__(self): 
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
+
+    def __repr__(self): 
+        return f"Coordinate(lat={self.lat}, lng={self.lng}, alt={self.alt})"
 
 # Main function to calculate drone locations
 
@@ -164,8 +167,8 @@ def getDronesLoc(
         U0 = normalize(direction)
         U1 = perp(U0)
         extent_long = np.linalg.norm(direction)
-        rect.extent[1] = extent_long / 2
-        rect.extent[0] = extent_long
+        rect.extent[1] = float(extent_long / 2)
+        rect.extent[0] = float(extent_long)
         rect.axis[0] = U0
         rect.axis[1] = U1
         rect.area = 4 * rect.extent[0] * rect.extent[1]
@@ -220,7 +223,7 @@ def getDronesLoc(
         delta_long = (drone_center[1] / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
         lat = droneOrigin.lat + delta_lat
         long = droneOrigin.lng + delta_long
-        flyTo_coords.append(Coordinate(lat, long, height))
+        flyTo_coords.append(Coordinate(lat, long, int(height)))
 
     angle = np.arctan2(angle_axis[1], angle_axis[0])
     return flyTo_coords, np.degrees(angle)

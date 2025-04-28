@@ -163,9 +163,9 @@ def getDronesLoc(
         direction = end_coord - rect.center
         U0 = normalize(direction)
         U1 = perp(U0)
-        extent_long = np.linalg.norm(direction)
-        rect.extent[1] = extent_long / 2
-        rect.extent[0] = extent_long
+        extent_max = np.linalg.norm(direction)
+        rect.extent[1] = float(extent_max / 2)
+        rect.extent[0] = float(extent_max)
         rect.axis[0] = U0
         rect.axis[1] = U1
         rect.area = 4 * rect.extent[0] * rect.extent[1]
@@ -193,6 +193,7 @@ def getDronesLoc(
 
     # Adjust the split offset to ensure the drone squares cover the entire rectangle
     split_offset = width * (1 + (1 - 2 * overlap))
+    print(split_offset)
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
 
     # Calculate the height for the drones
@@ -220,7 +221,7 @@ def getDronesLoc(
         delta_long = (drone_center[1] / (6371000 * np.cos(droneOrigin.lat * np.pi / 180))) * (180 / np.pi)
         lat = droneOrigin.lat + delta_lat
         long = droneOrigin.lng + delta_long
-        flyTo_coords.append(Coordinate(lat, long, height))
+        flyTo_coords.append(Coordinate(lat, long, int(height)))
 
     plt.figure(figsize=(8, 8))
     plt.scatter(coords[:, 0], coords[:, 1], color='blue', label='Data Points')
@@ -275,7 +276,7 @@ for i in range(num_vehicles):
         x += random.uniform(-10.0, 10.0)
         y += random.uniform(-10.0, 20.0)
         z += random.uniform(-10.0, 10.0)
-        trajectory.append(Coordinate(x, y, z))
+        trajectory.append(Coordinate(x, y, int(z)))
     vehicle_trajectories[vehicle_id] = trajectory
 
 droneOrigin = Coordinate(0, 0, 0)
