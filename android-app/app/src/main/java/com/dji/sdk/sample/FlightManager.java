@@ -134,7 +134,7 @@ class FlightManager {
         return coordinatesActivity;
     }
 
-    /**
+    /*
      * This function starts the process of setting up the waypoint mission and is called when
      * the user presses the Arm button.
      * Firstly we check the batterystate to ensure the drones battery is above 20% as the the

@@ -8,6 +8,7 @@ from communication_software.frontendWebsocket import run_server
 from communication_software.ConvexHullScalable import getDronesLoc, Coordinate
 import communication_software.Interface as Interface
 from communication_software.ROS import AtosCommunication
+from image_stitching.trajlist import TrajList
 import rclpy
 
 # --- NEW async wrapper function ---
@@ -40,6 +41,7 @@ def main() -> None:
                 for id in ids:
                     coordlist = ATOScommunicator.get_object_traj(id)
                     trajectoryList[id] = coordlist
+                    traj_list = TrajList(id, coordlist)  
 
                 #Create the handler for the communication. sendCoordinatesWebSocket starts a server that will run until it is stopped
                 flyToList, angle = getDronesLoc(trajectoryList, origo, n_drones=2, overlap=0.5)
@@ -51,7 +53,6 @@ def main() -> None:
                 angles = angle,angle
                 
                 start_server(ATOScommunicator)
-
                 communication = Communication()
 
                 try:

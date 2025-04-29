@@ -193,7 +193,6 @@ def getDronesLoc(
 
     # Adjust the split offset to ensure the drone squares cover the entire rectangle
     split_offset = width * (1 + (1 - 2 * overlap))
-    print(split_offset)
     drone_centers = [center + (i - (n_drones - 1) / 2) * split_offset * split_axis for i in range(int(n_drones))]
 
     # Calculate the height for the drones
@@ -265,19 +264,23 @@ num_vehicles = 5
 trajectory_length = 10
 
 # Initialize the vehicle trajectories dictionary
-vehicle_trajectories = {}
+# vehicle_trajectories = {}
 
-# Generate trajectories
-for i in range(num_vehicles):
-    vehicle_id = f"vehicle_{i+1}"
-    x, y, z = 0.0, 0.0, 0.0
-    trajectory = []
-    for _ in range(trajectory_length):
-        x += random.uniform(-10.0, 10.0)
-        y += random.uniform(-10.0, 20.0)
-        z += random.uniform(-10.0, 10.0)
-        trajectory.append(Coordinate(x, y, int(z)))
-    vehicle_trajectories[vehicle_id] = trajectory
+# # Generate trajectories
+# for i in range(num_vehicles):
+#     vehicle_id = f"vehicle_{i+1}"
+#     x, y, z = 0.0, 0.0, 0.0
+#     trajectory = []
+#     for _ in range(trajectory_length):
+#         x += random.uniform(-10.0, 10.0)
+#         y += random.uniform(-10.0, 20.0)
+#         z += random.uniform(-10.0, 10.0)
+#         trajectory.append(Coordinate(x, y, int(z)))
+#     vehicle_trajectories[vehicle_id] = trajectory
 
-droneOrigin = Coordinate(0, 0, 0)
+vehicle_trajectories = {
+    "vehicle_1": [Coordinate(57.685444, 11.978016, 0), Coordinate(57.685669, 11.978968, 0)]
+}
+
+droneOrigin = Coordinate(57.685546, 11.978447, 0)
 flyto = getDronesLoc(vehicle_trajectories, droneOrigin)

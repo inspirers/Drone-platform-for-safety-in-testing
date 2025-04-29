@@ -11,7 +11,8 @@ import redis
 import asyncio
 import os
 import torch
-
+from trajlist import TrajList
+ 
 
 if torch.cuda.is_available():
     print(f"[INFO] PyTorch CUDA detected. Available devices: {torch.cuda.device_count()}")
@@ -232,7 +233,11 @@ async def merge_stream(drone_ids):
                 labels = [f"ID: {d} GPS: {round(g[0], 6)}, {round(g[1], 6)}" for d, g in zip(detections.tracker_id, gps_positions)]
                 position_labels = [f"({int(d[0])}, {int(d[1])})" for d in detections.xyxy]
 
+                if trajlist[detetctions.tracker_id] 
+
+
                 annotator = Annotator()  # Skapa en annotator
+
                 annotated_frame = annotator.annotateFrame(frame=stitched_frame, detections=detections, labels=labels, positionLabels=position_labels)
             else:
                 annotated_frame = stitched_frame  # Ingen detektion, visa bara sammansatt bild
