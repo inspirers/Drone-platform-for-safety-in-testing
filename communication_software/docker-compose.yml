@@ -1,6 +1,6 @@
 services:
-  comm_software:
-    container_name: comm_software
+  backend:
+    container_name: backend
     stdin_open: true
     tty: true
     build: 
@@ -70,7 +70,7 @@ services:
     ports:
       - 8001:80
     depends_on:
-      - comm_software
+      - backend
   image_stitching:
     container_name: image_stitching
     environment:
